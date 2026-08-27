@@ -2,9 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Optional, Type
 
-from crewai_tools import BaseTool
 from crawlfox import CrawlFox
 from pydantic import BaseModel, Field
+
+try:
+    # CrewAI >= 0.80 often re-exports tools from crewai.tools
+    from crewai.tools import BaseTool  # type: ignore
+except ImportError:
+    try:
+        from crewai_tools import BaseTool  # type: ignore
+    except ImportError:  # pragma: no cover
+        from langchain_core.tools import BaseTool  # type: ignore
 
 
 class ScrapeSchema(BaseModel):
@@ -27,9 +35,8 @@ class CrawlFoxScrapeWebsiteTool(BaseTool):
 
     def _run(self, url: str) -> str:
         client = CrawlFox(api_key=self.api_key)
-        result = client.scrape(url, formats=["markdown"])
-        data = result.get("data") or {}
-        return str(data.get("markdown") or "")
+        doc = client.scrape(url, formats=["markdown"])
+        return doc.markdown or ""
 
 
 class CrawlFoxSearchTool(BaseTool):
@@ -42,4 +49,4 @@ class CrawlFoxSearchTool(BaseTool):
 
     def _run(self, query: str, num: int = 5) -> Any:
         client = CrawlFox(api_key=self.api_key)
-        return client.search(query, num=num)
+        return client.search(query, num=num).model_dump(exclude_none=True)

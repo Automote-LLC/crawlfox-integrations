@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 import pytest
 
-from crawlfox import CrawlFox, CrawlFoxError
+from crawlfox import AsyncCrawlFox, CrawlFox, CrawlFoxError, Document, SearchData
 
 
 def test_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -15,7 +15,7 @@ def test_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
         CrawlFox()
 
 
-def test_scrape_request(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_scrape_returns_document() -> None:
     captured: dict[str, Any] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -24,42 +24,87 @@ def test_scrape_request(monkeypatch: pytest.MonkeyPatch) -> None:
         captured["auth"] = request.headers.get("Authorization")
         return httpx.Response(
             200,
-            json={"success": True, "data": {"markdown": "# Hi"}},
+            json={
+                "success": True,
+                "data": {
+                    "markdown": "# Hi",
+                    "rawHtml": "<html></html>",
+                    "metadata": {
+                        "sourceURL": "https://example.com",
+                        "statusCode": 200,
+                        "scrapeId": "abc",
+                        "creditsUsed": 1.0,
+                        "cacheState": "miss",
+                    },
+                },
+            },
         )
 
     transport = httpx.MockTransport(handler)
     client = httpx.Client(transport=transport)
     cf = CrawlFox(api_key="cfx_test", client=client)
-    result = cf.scrape("https://example.com", formats=["markdown"], skip_cache=True)
+    doc = cf.scrape("https://example.com", formats=["markdown"], skip_cache=True)
 
-    assert result["success"] is True
-    assert result["data"]["markdown"] == "# Hi"
+    assert isinstance(doc, Document)
+    assert doc.markdown == "# Hi"
+    assert doc.raw_html == "<html></html>"
+    assert doc.metadata is not None
+    assert doc.metadata.source_url == "https://example.com"
+    assert doc.metadata.status_code == 200
+    assert doc.metadata.cache_state == "miss"
     assert captured["url"].endswith("/v1/scrape")
     assert captured["auth"] == "Bearer cfx_test"
-    assert captured["body"]["url"] == "https://example.com"
-    assert captured["body"]["formats"] == ["markdown"]
     assert captured["body"]["skipCache"] is True
 
 
-def test_search_request(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, Any] = {}
-
+def test_search_returns_search_data() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        captured["body"] = json.loads(request.content)
+        body = json.loads(request.content)
+        assert body["q"] == "crawlfox"
+        assert body["num"] == 5
         return httpx.Response(
             200,
-            json={"success": True, "data": {"web": [{"url": "https://x.com"}]}},
+            json={
+                "success": True,
+                "creditsUsed": 1,
+                "id": "serp_1",
+                "data": {"web": [{"url": "https://x.com", "title": "X", "position": 1}]},
+            },
         )
 
     transport = httpx.MockTransport(handler)
-    client = httpx.Client(transport=transport)
-    cf = CrawlFox(api_key="cfx_test", client=client)
+    cf = CrawlFox(api_key="cfx_test", client=httpx.Client(transport=transport))
     result = cf.search("crawlfox", engine="google", num=5)
 
-    assert result["data"]["web"][0]["url"] == "https://x.com"
-    assert captured["body"]["q"] == "crawlfox"
-    assert captured["body"]["engine"] == "google"
-    assert captured["body"]["num"] == 5
+    assert isinstance(result, SearchData)
+    assert result.web is not None and result.web[0].url == "https://x.com"
+    assert result.credits_used == 1
+    assert result.id == "serp_1"
+
+
+def test_batch_returns_documents() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "success": True,
+                "count": 1,
+                "results": [
+                    {"success": True, "data": {"markdown": "# A", "metadata": {"statusCode": 200}}}
+                ],
+            },
+        )
+
+    cf = CrawlFox(
+        api_key="cfx_test",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    batch = cf.batch(["https://example.org"], formats=["markdown"])
+    assert batch.success
+    assert len(batch.data) == 1
+    assert batch.data[0].markdown == "# A"
+    assert batch.data[0].metadata is not None
+    assert batch.data[0].metadata.status_code == 200
 
 
 def test_error_response() -> None:
@@ -73,10 +118,26 @@ def test_error_response() -> None:
             },
         )
 
-    transport = httpx.MockTransport(handler)
-    client = httpx.Client(transport=transport)
-    cf = CrawlFox(api_key="cfx_test", client=client)
+    cf = CrawlFox(
+        api_key="cfx_test",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
     with pytest.raises(CrawlFoxError) as exc:
         cf.scrape("https://example.com")
     assert exc.value.status == 429
     assert exc.value.code == "MONTHLY_QUOTA_EXCEEDED"
+
+
+@pytest.mark.asyncio
+async def test_async_scrape() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"success": True, "data": {"markdown": "# Async"}},
+        )
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as http:
+        app = AsyncCrawlFox(api_key="cfx_test", client=http)
+        doc = await app.scrape("https://example.com", formats=["markdown"])
+        assert doc.markdown == "# Async"

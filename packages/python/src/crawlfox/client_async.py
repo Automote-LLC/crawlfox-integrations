@@ -9,12 +9,12 @@ from crawlfox._transport import (
     batch_body,
     batch_from_envelope,
     document_from_envelope,
-    raise_or_json,
     resolve_api_key,
     scrape_body,
     search_body,
     search_from_envelope,
 )
+from crawlfox._transport import raise_or_json
 from crawlfox.types import (
     BatchScrapeResult,
     Document,
@@ -24,21 +24,21 @@ from crawlfox.types import (
 )
 
 
-class CrawlFox:
-    """Official CrawlFox sync client (Firecrawl-style return shapes).
+class AsyncCrawlFox:
+    """Async CrawlFox client — mirrors ``CrawlFox`` with ``await``.
 
     Example::
 
-        from crawlfox import CrawlFox
+        import asyncio
+        from crawlfox import AsyncCrawlFox
 
-        app = CrawlFox(api_key="cfx_...")
-        doc = app.scrape("https://example.com", formats=["markdown"])
-        print(doc.markdown)
-        print(doc.metadata.source_url)
+        async def main():
+            app = AsyncCrawlFox(api_key="cfx_...")
+            doc = await app.scrape("https://example.com", formats=["markdown"])
+            print(doc.markdown)
+            await app.close()
 
-        results = app.search("crawlfox", num=5)
-        for hit in results.web or []:
-            print(hit.url, hit.title)
+        asyncio.run(main())
     """
 
     def __init__(
@@ -47,7 +47,7 @@ class CrawlFox:
         *,
         api_url: str = DEFAULT_API_URL,
         timeout: float = 120.0,
-        client: Optional[httpx.Client] = None,
+        client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         self.api_key = resolve_api_key(api_key)
         self.api_url = api_url.rstrip("/")
@@ -55,23 +55,23 @@ class CrawlFox:
         self._client = client
         self._owns_client = client is None
 
-    def _http(self) -> httpx.Client:
+    def _http(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.Client(timeout=self.timeout)
+            self._client = httpx.AsyncClient(timeout=self.timeout)
         return self._client
 
-    def close(self) -> None:
+    async def close(self) -> None:
         if self._owns_client and self._client is not None:
-            self._client.close()
+            await self._client.aclose()
             self._client = None
 
-    def __enter__(self) -> "CrawlFox":
+    async def __aenter__(self) -> "AsyncCrawlFox":
         return self
 
-    def __exit__(self, *args: object) -> None:
-        self.close()
+    async def __aexit__(self, *args: object) -> None:
+        await self.close()
 
-    def scrape(
+    async def scrape(
         self,
         url: str,
         *,
@@ -82,7 +82,6 @@ class CrawlFox:
         timeout: Optional[int] = None,
         json_options: Optional[Dict[str, Any]] = None,
     ) -> Document:
-        """Scrape one URL. Returns a ``Document`` (``.markdown``, ``.metadata``, …)."""
         body = scrape_body(
             url,
             formats=formats,
@@ -92,9 +91,9 @@ class CrawlFox:
             timeout=timeout,
             json_options=json_options,
         )
-        return document_from_envelope(self._post("/v1/scrape", body))
+        return document_from_envelope(await self._post("/v1/scrape", body))
 
-    def batch(
+    async def batch(
         self,
         urls: List[str],
         *,
@@ -104,7 +103,6 @@ class CrawlFox:
         zdr: Optional[bool] = None,
         timeout: Optional[int] = None,
     ) -> BatchScrapeResult:
-        """Scrape many URLs. Returns ``BatchScrapeResult`` with ``.data: list[Document]``."""
         body = batch_body(
             urls,
             formats=formats,
@@ -113,9 +111,9 @@ class CrawlFox:
             zdr=zdr,
             timeout=timeout,
         )
-        return batch_from_envelope(self._post("/v1/batch", body))
+        return batch_from_envelope(await self._post("/v1/batch", body))
 
-    def search(
+    async def search(
         self,
         query: str,
         *,
@@ -125,10 +123,6 @@ class CrawlFox:
         country: Optional[str] = None,
         language: Optional[str] = None,
     ) -> SearchData:
-        """Search the web. Returns ``SearchData`` with ``.web`` results.
-
-        ``query`` is the Firecrawl-style parameter name; it maps to API field ``q``.
-        """
         body = search_body(
             query,
             engine=engine,
@@ -137,10 +131,10 @@ class CrawlFox:
             country=country,
             language=language,
         )
-        return search_from_envelope(self._post("/v1/search", body))
+        return search_from_envelope(await self._post("/v1/search", body))
 
-    def _post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
-        res = self._http().post(
+    async def _post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        res = await self._http().post(
             f"{self.api_url}{path}",
             json=body,
             headers={

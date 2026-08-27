@@ -24,7 +24,8 @@ class CrawlFoxScrape(BaseTool):
 
     def _run(self, url: str) -> dict[str, Any]:
         client = CrawlFox(api_key=self.api_key)
-        return client.scrape(url, formats=["markdown"])
+        doc = client.scrape(url, formats=["markdown"])
+        return doc.model_dump(exclude_none=True)
 
 
 class CrawlFoxSearch(BaseTool):
@@ -35,4 +36,4 @@ class CrawlFoxSearch(BaseTool):
 
     def _run(self, query: str, num: int = 5) -> dict[str, Any]:
         client = CrawlFox(api_key=self.api_key)
-        return client.search(query, num=num)
+        return client.search(query, num=num).model_dump(exclude_none=True)

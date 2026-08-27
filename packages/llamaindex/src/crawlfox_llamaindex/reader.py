@@ -30,15 +30,16 @@ class CrawlFoxWebReader:
         if self.mode == "scrape":
             if not url:
                 raise ValueError("url is required for scrape mode")
-            result = self.client.scrape(
+            doc = self.client.scrape(
                 url,
                 formats=self.params.get("formats", ["markdown"]),
                 extract_main_content=self.params.get("extract_main_content"),
                 skip_cache=self.params.get("skip_cache"),
             )
-            data = result.get("data") or {}
-            text = data.get("markdown") or data.get("text") or ""
-            meta = {**(data.get("metadata") or {}), "url": url}
+            text = doc.markdown or doc.text or ""
+            meta = {"url": url}
+            if doc.metadata:
+                meta.update(doc.metadata.model_dump(exclude_none=True))
             return [Document(text=str(text), metadata=meta)]
 
         if not query:
@@ -49,14 +50,11 @@ class CrawlFoxWebReader:
             num=self.params.get("num", 5),
         )
         docs: List[Document] = []
-        for item in (result.get("data") or {}).get("web") or []:
-            title = item.get("title") or ""
-            desc = item.get("description") or ""
-            link = item.get("url") or ""
+        for item in result.web or []:
             docs.append(
                 Document(
-                    text=f"{title}\n{desc}".strip() or link,
-                    metadata={"url": link, "title": title},
+                    text=f"{item.title or ''}\n{item.description or ''}".strip() or item.url,
+                    metadata={"url": item.url, "title": item.title},
                 )
             )
         return docs

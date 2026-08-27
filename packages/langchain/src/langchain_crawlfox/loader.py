@@ -43,24 +43,17 @@ class CrawlFoxLoader(BaseLoader):
 
     def _load_scrape(self) -> Iterator[Document]:
         assert self.url is not None
-        result = self.client.scrape(self.url, formats=self.formats)  # type: ignore[arg-type]
-        data = result.get("data") or {}
-        text = (
-            data.get("markdown")
-            or data.get("text")
-            or data.get("html")
-            or ""
-        )
-        meta = {**self.metadata, **(data.get("metadata") or {}), "source": self.url}
+        doc = self.client.scrape(self.url, formats=self.formats)  # type: ignore[arg-type]
+        text = doc.markdown or doc.text or doc.html or ""
+        meta = {**self.metadata, "source": self.url}
+        if doc.metadata:
+            meta.update(doc.metadata.model_dump(exclude_none=True))
         yield Document(page_content=str(text), metadata=meta)
 
     def _load_search(self) -> Iterator[Document]:
         assert self.query is not None
         result = self.client.search(self.query, num=self.search_num)
-        for item in (result.get("data") or {}).get("web") or []:
-            title = item.get("title") or ""
-            desc = item.get("description") or ""
-            url = item.get("url") or ""
-            content = f"{title}\n{desc}".strip() or url
-            meta = {**self.metadata, "source": url, "title": title}
+        for item in result.web or []:
+            content = f"{item.title or ''}\n{item.description or ''}".strip() or item.url
+            meta = {**self.metadata, "source": item.url, "title": item.title}
             yield Document(page_content=content, metadata=meta)
