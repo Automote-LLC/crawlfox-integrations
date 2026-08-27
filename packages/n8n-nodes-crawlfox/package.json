@@ -1,0 +1,104 @@
+{
+  "name": "n8n-nodes-crawlfox",
+  "version": "0.1.0",
+  "description": "n8n community node for CrawlFox scrape and search",
+  "license": "MIT",
+  "main": "index.js",
+  "files": ["dist"],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      {
+        "name": "crawlfoxApi",
+        "displayName": "CrawlFox API",
+        "properties": [
+          {
+            "displayName": "API Key",
+            "name": "apiKey",
+            "type": "string",
+            "typeOptions": { "password": true },
+            "default": "",
+            "required": true,
+            "description": "Your CrawlFox API key (cfx_…)"
+          }
+        ]
+      }
+    ],
+    "nodes": [
+      {
+        "name": "CrawlFox",
+        "displayName": "CrawlFox",
+        "description": "Scrape URLs and search the web with CrawlFox",
+        "defaults": { "name": "CrawlFox" },
+        "group": ["transform"],
+        "version": 1,
+        "inputs": ["main"],
+        "outputs": ["main"],
+        "credentials": [{ "name": "crawlfoxApi", "required": true }],
+        "properties": [
+          {
+            "displayName": "Operation",
+            "name": "operation",
+            "type": "options",
+            "options": [
+              { "name": "Scrape URL", "value": "scrape", "description": "Scrape one URL" },
+              { "name": "Search Web", "value": "search", "description": "Run a web search" }
+            ],
+            "default": "scrape"
+          },
+          {
+            "displayName": "URL",
+            "name": "url",
+            "type": "string",
+            "default": "",
+            "required": true,
+            "displayOptions": { "show": { "operation": ["scrape"] } }
+          },
+          {
+            "displayName": "Query",
+            "name": "query",
+            "type": "string",
+            "default": "",
+            "required": true,
+            "displayOptions": { "show": { "operation": ["search"] } }
+          },
+          {
+            "displayName": "Engine",
+            "name": "engine",
+            "type": "options",
+            "options": [
+              { "name": "Google", "value": "google" },
+              { "name": "Bing", "value": "bing" },
+              { "name": "DuckDuckGo", "value": "duckduckgo" }
+            ],
+            "default": "google",
+            "displayOptions": { "show": { "operation": ["search"] } }
+          },
+          {
+            "displayName": "Result Count",
+            "name": "num",
+            "type": "number",
+            "default": 10,
+            "displayOptions": { "show": { "operation": ["search"] } }
+          },
+          {
+            "displayName": "Formats",
+            "name": "formats",
+            "type": "string",
+            "default": "markdown",
+            "description": "Comma-separated scrape formats",
+            "displayOptions": { "show": { "operation": ["scrape"] } }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsup nodes/CrawlFox/CrawlFox.node.ts --format cjs --out-dir dist/nodes/CrawlFox --clean && cp package.json dist/ && cp -r nodes/CrawlFox/*.svg dist/nodes/CrawlFox/ 2>/dev/null || true"
+  },
+  "devDependencies": {
+    "n8n-workflow": "^1.82.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}

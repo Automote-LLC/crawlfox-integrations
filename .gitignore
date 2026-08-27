@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.coverage
+htmlcov/
+.pytest_cache/
+__pycache__/
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+*.log
+.DS_Store
+.zapier/
+build/

@@ -1,0 +1,14 @@
+{
+  "name": "crawlfox-integrations",
+  "private": true,
+  "description": "CrawlFox SDKs and framework integrations monorepo",
+  "workspaces": [
+    "packages/js",
+    "packages/aisdk",
+    "packages/n8n-nodes-crawlfox"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

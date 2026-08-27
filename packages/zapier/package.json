@@ -1,0 +1,21 @@
+{
+  "name": "crawlfox-zapier",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zapier Platform app for CrawlFox (scrape + search)",
+  "main": "index.js",
+  "scripts": {
+    "test": "zapier test",
+    "validate": "zapier validate"
+  },
+  "dependencies": {
+    "zapier-platform-core": "17.7.0"
+  },
+  "devDependencies": {
+    "zapier-platform-cli": "17.7.0"
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
+  }
+}

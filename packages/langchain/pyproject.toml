@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langchain-crawlfox"
+version = "0.1.0"
+description = "LangChain loaders and tools for CrawlFox"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = [
+  "crawlfox-py>=0.1.0",
+  "langchain-core>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langchain_crawlfox"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

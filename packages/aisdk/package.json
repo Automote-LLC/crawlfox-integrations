@@ -1,0 +1,35 @@
+{
+  "name": "crawlfox-aisdk",
+  "version": "0.1.0",
+  "description": "CrawlFox tools for the Vercel AI SDK",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "peerDependencies": {
+    "ai": ">=4.0.0",
+    "crawlfox": ">=0.1.0",
+    "zod": ">=3.0.0"
+  },
+  "devDependencies": {
+    "ai": "^4.3.0",
+    "crawlfox": "file:../js",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "zod": "^3.24.2"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "keywords": ["crawlfox", "vercel-ai-sdk", "ai", "tools"]
+}
