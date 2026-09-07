@@ -1,0 +1,22 @@
+[package]
+name = "crawlfox"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+license = "MIT"
+description = "Official Rust SDK for the CrawlFox web scraping and search API"
+repository = "https://github.com/Automote-LLC/crawlfox-integrations"
+homepage = "https://crawlfox.io"
+readme = "README.md"
+keywords = ["crawlfox", "scraping", "serp", "markdown"]
+categories = ["api-bindings", "web-programming"]
+
+[dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+wiremock = "0.6"

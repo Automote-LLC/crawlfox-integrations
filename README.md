@@ -8,6 +8,8 @@ Official CrawlFox SDKs and framework integrations for the public API (`https://a
 |---------|---------|-------------|
 | **crawlfox** | `npm install crawlfox` | JavaScript / TypeScript SDK |
 | **crawlfox-py** | `pip install crawlfox-py` | Python SDK |
+| **crawlfox (Go)** | `go get github.com/Automote-LLC/crawlfox-integrations/packages/go` | Go SDK |
+| **crawlfox (Rust)** | path/git crate `crawlfox` | Rust SDK |
 | **crawlfox-aisdk** | `npm install crawlfox-aisdk` | Vercel AI SDK tools |
 | **langchain-crawlfox** | `pip install langchain-crawlfox` | LangChain loaders & tools |
 | **crawlfox-llamaindex** | `pip install crawlfox-llamaindex` | LlamaIndex web reader |
@@ -39,4 +41,10 @@ cd packages/js && npm install && npm test && npm run build
 
 # Python SDK
 cd packages/python && pip install -e ".[dev]" && pytest
+
+# Go SDK
+cd packages/go && go test ./...
+
+# Rust SDK
+cd packages/rust && cargo test
 ```
