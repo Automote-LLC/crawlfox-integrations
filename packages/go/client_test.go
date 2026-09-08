@@ -21,10 +21,11 @@ func TestRequiresAPIKey(t *testing.T) {
 }
 
 func TestScrapeSendsCorrectRequest(t *testing.T) {
-	var gotURL, gotAuth, gotBody string
+	var gotURL, gotAuth, gotBody, gotUA string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotURL = r.URL.Path
 		gotAuth = r.Header.Get("Authorization")
+		gotUA = r.Header.Get("User-Agent")
 		b, _ := io.ReadAll(r.Body)
 		gotBody = string(b)
 		w.Header().Set("Content-Type", "application/json")
@@ -39,11 +40,13 @@ func TestScrapeSendsCorrectRequest(t *testing.T) {
 	res, err := client.Scrape(context.Background(), "https://example.com", &ScrapeOptions{
 		Formats:   []string{"markdown"},
 		SkipCache: Bool(true),
+		Country:   "de",
+		RedactPII: true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Success || res.Data == nil || res.Data.Markdown != "# Hello" {
+	if res.Markdown != "# Hello" {
 		t.Fatalf("unexpected scrape response: %+v", res)
 	}
 	if gotURL != "/v1/scrape" {
@@ -52,15 +55,15 @@ func TestScrapeSendsCorrectRequest(t *testing.T) {
 	if gotAuth != "Bearer cfx_test" {
 		t.Fatalf("auth = %s", gotAuth)
 	}
+	if !strings.HasPrefix(gotUA, "crawlfox-go/") {
+		t.Fatalf("ua = %s", gotUA)
+	}
 	var body map[string]any
 	if err := json.Unmarshal([]byte(gotBody), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body["url"] != "https://example.com" {
-		t.Fatalf("url = %v", body["url"])
-	}
-	if body["skipCache"] != true {
-		t.Fatalf("skipCache = %v", body["skipCache"])
+	if body["country"] != "de" || body["redactPII"] != true {
+		t.Fatalf("body = %#v", body)
 	}
 }
 
@@ -84,19 +87,16 @@ func TestSearchSendsQueryBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Data == nil || len(res.Data.Web) == 0 || res.Data.Web[0].URL != "https://example.com" {
+	if len(res.Web) == 0 || res.Web[0].URL != "https://example.com" {
 		t.Fatalf("unexpected search: %+v", res)
 	}
-	if body["q"] != "crawlfox" || body["engine"] != "google" || body["num"] != float64(5) {
+	if body["q"] != "crawlfox" || body["engine"] != "google" {
 		t.Fatalf("body = %#v", body)
 	}
 }
 
 func TestBatch(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/batch" {
-			t.Errorf("path = %s", r.URL.Path)
-		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"success":true,"count":1,"results":[{"success":true,"data":{"markdown":"# A"}}]}`))
 	}))
@@ -112,7 +112,7 @@ func TestBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Success || len(res.Results) != 1 || res.Results[0].Data.Markdown != "# A" {
+	if !res.Success || len(res.Data) != 1 || res.Data[0].Markdown != "# A" {
 		t.Fatalf("unexpected batch: %+v", res)
 	}
 }

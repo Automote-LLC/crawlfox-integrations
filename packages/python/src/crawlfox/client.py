@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import httpx
 
@@ -8,38 +8,31 @@ from crawlfox._transport import (
     DEFAULT_API_URL,
     batch_body,
     batch_from_envelope,
+    default_headers,
     document_from_envelope,
     raise_or_json,
     resolve_api_key,
     scrape_body,
+    scrape_get_path,
     search_body,
     search_from_envelope,
+    with_retries,
 )
+from crawlfox.normalize import normalize_keys
 from crawlfox.types import (
     BatchScrapeResult,
     Document,
+    LogRow,
+    RedactPii,
     ScrapeFormat,
     SearchData,
     SearchEngine,
+    SearchStreamEvent,
 )
 
 
 class CrawlFox:
-    """Official CrawlFox sync client (Firecrawl-style return shapes).
-
-    Example::
-
-        from crawlfox import CrawlFox
-
-        app = CrawlFox(api_key="cfx_...")
-        doc = app.scrape("https://example.com", formats=["markdown"])
-        print(doc.markdown)
-        print(doc.metadata.source_url)
-
-        results = app.search("crawlfox", num=5)
-        for hit in results.web or []:
-            print(hit.url, hit.title)
-    """
+    """Official CrawlFox sync client (Firecrawl-style return shapes)."""
 
     def __init__(
         self,
@@ -47,11 +40,13 @@ class CrawlFox:
         *,
         api_url: str = DEFAULT_API_URL,
         timeout: float = 120.0,
+        max_retries: int = 2,
         client: Optional[httpx.Client] = None,
     ) -> None:
         self.api_key = resolve_api_key(api_key)
         self.api_url = api_url.rstrip("/")
         self.timeout = timeout
+        self.max_retries = max_retries
         self._client = client
         self._owns_client = client is None
 
@@ -76,42 +71,59 @@ class CrawlFox:
         url: str,
         *,
         formats: Optional[List[ScrapeFormat]] = None,
-        extract_main_content: Optional[bool] = None,
         skip_cache: Optional[bool] = None,
         zdr: Optional[bool] = None,
         timeout: Optional[int] = None,
         json_options: Optional[Dict[str, Any]] = None,
+        country: Optional[str] = None,
+        language: Optional[str] = None,
+        location: Optional[Dict[str, Any]] = None,
+        redact_pii: Optional[RedactPii] = None,
+        extract_main_content: Optional[bool] = None,
     ) -> Document:
-        """Scrape one URL. Returns a ``Document`` (``.markdown``, ``.metadata``, …)."""
         body = scrape_body(
             url,
             formats=formats,
-            extract_main_content=extract_main_content,
             skip_cache=skip_cache,
             zdr=zdr,
             timeout=timeout,
             json_options=json_options,
+            country=country,
+            language=language,
+            location=location,
+            redact_pii=redact_pii,
+            extract_main_content=extract_main_content,
         )
         return document_from_envelope(self._post("/v1/scrape", body))
+
+    def scrape_get(self, url: str) -> Document:
+        return document_from_envelope(self._get(scrape_get_path(url)))
 
     def batch(
         self,
         urls: List[str],
         *,
         formats: Optional[List[ScrapeFormat]] = None,
-        extract_main_content: Optional[bool] = None,
         skip_cache: Optional[bool] = None,
         zdr: Optional[bool] = None,
         timeout: Optional[int] = None,
+        country: Optional[str] = None,
+        language: Optional[str] = None,
+        location: Optional[Dict[str, Any]] = None,
+        redact_pii: Optional[RedactPii] = None,
+        extract_main_content: Optional[bool] = None,
     ) -> BatchScrapeResult:
-        """Scrape many URLs. Returns ``BatchScrapeResult`` with ``.data: list[Document]``."""
         body = batch_body(
             urls,
             formats=formats,
-            extract_main_content=extract_main_content,
             skip_cache=skip_cache,
             zdr=zdr,
             timeout=timeout,
+            country=country,
+            language=language,
+            location=location,
+            redact_pii=redact_pii,
+            extract_main_content=extract_main_content,
         )
         return batch_from_envelope(self._post("/v1/batch", body))
 
@@ -125,10 +137,6 @@ class CrawlFox:
         country: Optional[str] = None,
         language: Optional[str] = None,
     ) -> SearchData:
-        """Search the web. Returns ``SearchData`` with ``.web`` results.
-
-        ``query`` is the Firecrawl-style parameter name; it maps to API field ``q``.
-        """
         body = search_body(
             query,
             engine=engine,
@@ -139,13 +147,69 @@ class CrawlFox:
         )
         return search_from_envelope(self._post("/v1/search", body))
 
-    def _post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
-        res = self._http().post(
-            f"{self.api_url}{path}",
-            json=body,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
+    def search_stream(
+        self,
+        query: str,
+        *,
+        engine: Optional[SearchEngine] = None,
+        num: Optional[int] = None,
+        start: Optional[int] = None,
+        country: Optional[str] = None,
+        language: Optional[str] = None,
+    ) -> Iterator[SearchStreamEvent]:
+        import json
+
+        body = search_body(
+            query,
+            engine=engine,
+            num=num,
+            start=start,
+            country=country,
+            language=language,
         )
-        return raise_or_json(res)
+
+        def send() -> httpx.Response:
+            res = self._http().post(
+                f"{self.api_url}/v1/search/stream",
+                json=body,
+                headers=default_headers(self.api_key),
+            )
+            if not res.is_success:
+                raise_or_json(res)
+            return res
+
+        res = with_retries(send, max_retries=self.max_retries)
+        for line in res.iter_lines():
+            if not line:
+                continue
+            raw = json.loads(line)
+            yield SearchStreamEvent.model_validate(
+                normalize_keys(raw) if isinstance(raw, dict) else raw
+            )
+
+    def get_log(self, log_id: str) -> LogRow:
+        return LogRow.model_validate(self._get(f"/v1/logs/{log_id}"))
+
+    def get_log_result(self, log_id: str) -> Any:
+        return self._get(f"/v1/logs/{log_id}/result")
+
+    def _post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        def send() -> Dict[str, Any]:
+            res = self._http().post(
+                f"{self.api_url}{path}",
+                json=body,
+                headers=default_headers(self.api_key),
+            )
+            return raise_or_json(res)
+
+        return with_retries(send, max_retries=self.max_retries)
+
+    def _get(self, path: str) -> Dict[str, Any]:
+        def send() -> Dict[str, Any]:
+            res = self._http().get(
+                f"{self.api_url}{path}",
+                headers=default_headers(self.api_key),
+            )
+            return raise_or_json(res)
+
+        return with_retries(send, max_retries=self.max_retries)

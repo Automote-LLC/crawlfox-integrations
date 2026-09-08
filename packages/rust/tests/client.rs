@@ -5,7 +5,6 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[test]
 fn requires_api_key() {
-    // SAFETY: this test is single-threaded and only clears our own key.
     unsafe { std::env::remove_var("CRAWLFOX_API_KEY") };
     let err = Client::new(ClientOptions::default()).unwrap_err();
     assert!(matches!(err, Error::MissingApiKey));
@@ -28,6 +27,7 @@ async fn scrape_sends_correct_request() {
         api_key: Some("cfx_test".into()),
         api_url: Some(server.uri()),
         timeout: None,
+        max_retries: None,
     })
     .unwrap();
 
@@ -37,14 +37,15 @@ async fn scrape_sends_correct_request() {
             ScrapeOptions {
                 formats: Some(vec!["markdown".into()]),
                 skip_cache: Some(true),
+                country: Some("de".into()),
+                redact_pii: Some(json!(true)),
                 ..Default::default()
             },
         )
         .await
         .unwrap();
 
-    assert!(res.success);
-    assert_eq!(res.data.unwrap().markdown.as_deref(), Some("# Hello"));
+    assert_eq!(res.markdown.as_deref(), Some("# Hello"));
 }
 
 #[tokio::test]
@@ -63,6 +64,7 @@ async fn search_sends_query_body() {
         api_key: Some("cfx_test".into()),
         api_url: Some(server.uri()),
         timeout: None,
+        max_retries: None,
     })
     .unwrap();
 
@@ -78,10 +80,7 @@ async fn search_sends_query_body() {
         .await
         .unwrap();
 
-    assert_eq!(
-        res.data.unwrap().web.unwrap()[0].url,
-        "https://example.com"
-    );
+    assert_eq!(res.web.unwrap()[0].url, "https://example.com");
 }
 
 #[tokio::test]
@@ -101,6 +100,7 @@ async fn batch_returns_results() {
         api_key: Some("cfx_test".into()),
         api_url: Some(server.uri()),
         timeout: None,
+        max_retries: None,
     })
     .unwrap();
 
@@ -115,7 +115,7 @@ async fn batch_returns_results() {
         .await
         .unwrap();
     assert!(res.success);
-    assert_eq!(res.results[0].data.as_ref().unwrap().markdown.as_deref(), Some("# A"));
+    assert_eq!(res.data[0].markdown.as_deref(), Some("# A"));
 }
 
 #[tokio::test]
@@ -135,6 +135,7 @@ async fn throws_on_failure() {
         api_key: Some("cfx_test".into()),
         api_url: Some(server.uri()),
         timeout: None,
+        max_retries: Some(2),
     })
     .unwrap();
 

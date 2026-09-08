@@ -1,10 +1,4 @@
-"""Typed response models for the CrawlFox Python SDK.
-
-Typed models = Pydantic classes that describe the shape of API responses so
-you get attribute access (`doc.markdown`) and editor autocomplete instead of
-raw nested dicts (`doc["data"]["markdown"]`). Field names are snake_case,
-matching Firecrawl's Python SDK.
-"""
+"""Typed response models for the CrawlFox Python SDK."""
 
 from __future__ import annotations
 
@@ -12,19 +6,25 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
+SDK_VERSION = "0.1.0"
+
 ScrapeFormat = Literal[
     "markdown",
     "html",
     "rawHtml",
     "raw_html",
-    "text",
     "json",
     "links",
     "images",
     "emails",
 ]
 
-SearchEngine = Literal["google", "bing", "duckduckgo"]
+SearchEngine = Literal["google", "duckduckgo"]
+
+RedactPiiMode = Literal["accurate", "aggressive", "fast"]
+RedactPiiEntity = Literal["PERSON", "EMAIL", "PHONE", "LOCATION", "FINANCIAL", "SECRET"]
+RedactPiiReplaceStyle = Literal["tag", "mask", "remove"]
+RedactPii = Union[bool, Dict[str, Any]]
 
 
 class DocumentMetadata(BaseModel):
@@ -41,6 +41,8 @@ class DocumentMetadata(BaseModel):
     scrape_id: Optional[str] = None
     credits_used: Optional[float] = None
     cache_state: Optional[str] = None
+    content_type: Optional[str] = None
+    favicon: Optional[str] = None
 
 
 class Document(BaseModel):
@@ -51,8 +53,6 @@ class Document(BaseModel):
     markdown: Optional[str] = None
     html: Optional[str] = None
     raw_html: Optional[str] = None
-    text: Optional[str] = None
-    # Named json_ to avoid shadowing BaseModel.json(); still accepts API key "json".
     json_: Optional[Any] = Field(default=None, validation_alias="json", serialization_alias="json")
     links: Optional[List[str]] = None
     images: Optional[List[str]] = None
@@ -62,13 +62,11 @@ class Document(BaseModel):
     error: Optional[str] = None
 
     @property
-    def json(self) -> Optional[Any]:  # noqa: A003 — Firecrawl-compatible alias
+    def json(self) -> Optional[Any]:  # noqa: A003
         return self.json_
 
 
 class SearchResultWeb(BaseModel):
-    """One organic search hit."""
-
     model_config = ConfigDict(extra="allow")
 
     url: str
@@ -78,8 +76,6 @@ class SearchResultWeb(BaseModel):
 
 
 class SearchData(BaseModel):
-    """Search results — Firecrawl-style return from ``search``."""
-
     model_config = ConfigDict(extra="allow")
 
     web: Optional[List[SearchResultWeb]] = None
@@ -88,14 +84,35 @@ class SearchData(BaseModel):
     success: Optional[bool] = None
 
 
-class BatchScrapeResult(BaseModel):
-    """Batch scrape response."""
+class SearchStreamEvent(BaseModel):
+    model_config = ConfigDict(extra="allow")
 
+    type: str
+    data: Optional[Dict[str, Any]] = None
+    partial: Optional[bool] = None
+    credits_used: Optional[float] = None
+    id: Optional[str] = None
+    code: Optional[str] = None
+    message: Optional[str] = None
+
+
+class BatchScrapeResult(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     success: bool = True
     count: Optional[int] = None
     data: List[Document] = Field(default_factory=list)
+
+
+class LogRow(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    started_at_ms: int
+    duration_ms: int
+    url: Any = None
+    status: int
+    final_outcome: Optional[str] = None
 
 
 class CrawlFoxError(Exception):
