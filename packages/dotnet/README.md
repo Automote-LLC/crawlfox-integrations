@@ -1,0 +1,16 @@
+# Crawlfox (.NET)
+
+```xml
+<PackageReference Include="Crawlfox" Version="0.1.0" />
+```
+
+Not published yet.
+
+```csharp
+using Crawlfox;
+
+using var app = new Client(Environment.GetEnvironmentVariable("CRAWLFOX_API_KEY"));
+var page = await app.Scrape("https://example.com", new { formats = new[] { "markdown" } });
+Console.WriteLine(page.GetProperty("markdown"));
+var hits = await app.Search("crawlfox", new { engine = "google", num = 5 });
+```

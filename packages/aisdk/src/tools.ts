@@ -12,11 +12,12 @@ export function scrape(options?: CrawlFoxClientOptions) {
     description: "Scrape a URL with CrawlFox.",
     parameters: z.object({
       url: z.string().url(),
-      formats: z.array(z.enum(["markdown", "html", "text", "links"])).optional(),
+      formats: z
+        .array(z.enum(["markdown", "html", "rawHtml", "json", "links", "images", "emails"]))
+        .optional(),
     }),
     execute: async ({ url, formats }) => {
-      const result = await c.scrape(url, { formats: formats ?? ["markdown"] });
-      return result.data ?? result;
+      return c.scrape(url, { formats: formats ?? ["markdown"] });
     },
   });
 }
@@ -27,12 +28,27 @@ export function search(options?: CrawlFoxClientOptions) {
     description: "Search the web with CrawlFox.",
     parameters: z.object({
       q: z.string(),
-      engine: z.enum(["google", "bing", "duckduckgo"]).optional(),
+      engine: z.enum(["google", "duckduckgo"]).optional(),
       num: z.number().int().min(1).max(100).optional(),
     }),
     execute: async ({ q, engine, num }) => {
-      const result = await c.search(q, { engine, num });
-      return result.data ?? result;
+      return c.search(q, { engine, num });
+    },
+  });
+}
+
+export function batch(options?: CrawlFoxClientOptions) {
+  const c = client(options);
+  return tool({
+    description: "Scrape multiple URLs with CrawlFox.",
+    parameters: z.object({
+      urls: z.array(z.string().url()).min(1).max(100),
+      formats: z
+        .array(z.enum(["markdown", "html", "rawHtml", "json", "links", "images", "emails"]))
+        .optional(),
+    }),
+    execute: async ({ urls, formats }) => {
+      return c.batch(urls, { formats: formats ?? ["markdown"] });
     },
   });
 }

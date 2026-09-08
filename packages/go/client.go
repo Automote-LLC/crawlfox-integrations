@@ -1,26 +1,26 @@
 package crawlfox
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 )
 
-// Client is the official CrawlFox Go client for scrape, batch, and search.
 type Client struct {
-	apiKey  string
-	apiURL  string
-	timeout time.Duration
-	http    HTTPDoer
+	apiKey     string
+	apiURL     string
+	maxRetries int
+	http       HTTPDoer
 }
 
-// New constructs a Client. apiKey may be empty if CRAWLFOX_API_KEY is set.
 func New(opts ClientOptions) (*Client, error) {
 	key := opts.APIKey
 	if key == "" {
@@ -38,69 +38,150 @@ func New(opts ClientOptions) (*Client, error) {
 	if ms <= 0 {
 		ms = 120_000
 	}
+	retries := 2
+	if opts.MaxRetries > 0 {
+		retries = opts.MaxRetries
+	}
 	httpClient := opts.HTTPClient
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: time.Duration(ms) * time.Millisecond}
 	}
 	return &Client{
-		apiKey:  key,
-		apiURL:  apiURL,
-		timeout: time.Duration(ms) * time.Millisecond,
-		http:    httpClient,
+		apiKey:     key,
+		apiURL:     apiURL,
+		maxRetries: retries,
+		http:       httpClient,
 	}, nil
 }
 
-// Scrape fetches one URL.
-func (c *Client) Scrape(ctx context.Context, url string, opts *ScrapeOptions) (*ScrapeResponse, error) {
-	body := map[string]any{"url": url}
+func (c *Client) Scrape(ctx context.Context, pageURL string, opts *ScrapeOptions) (*Document, error) {
+	body := map[string]any{"url": pageURL}
 	mergeScrape(body, opts)
-	var out ScrapeResponse
-	if err := c.post(ctx, "/v1/scrape", body, &out); err != nil {
+	var env scrapeEnvelope
+	if err := c.doJSON(ctx, http.MethodPost, "/v1/scrape", body, &env); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return documentFromEnv(env), nil
 }
 
-// Batch scrapes up to 100 URLs with the same options. jsonOptions is not sent.
-func (c *Client) Batch(ctx context.Context, urls []string, opts *ScrapeOptions) (*BatchScrapeResponse, error) {
+func (c *Client) ScrapeGet(ctx context.Context, pageURL string) (*Document, error) {
+	path := "/v1/scrape/" + url.PathEscape(pageURL)
+	var env scrapeEnvelope
+	if err := c.doJSON(ctx, http.MethodGet, path, nil, &env); err != nil {
+		return nil, err
+	}
+	return documentFromEnv(env), nil
+}
+
+func (c *Client) Batch(ctx context.Context, urls []string, opts *ScrapeOptions) (*BatchScrapeResult, error) {
 	body := map[string]any{"urls": urls}
 	if opts != nil {
 		cp := *opts
 		cp.JSONOptions = nil
 		mergeScrape(body, &cp)
 	}
-	var out BatchScrapeResponse
-	if err := c.post(ctx, "/v1/batch", body, &out); err != nil {
+	var env batchEnvelope
+	if err := c.doJSON(ctx, http.MethodPost, "/v1/batch", body, &env); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out := &BatchScrapeResult{Success: env.Success, Count: env.Count}
+	for _, item := range env.Results {
+		if d := documentFromEnv(item); d != nil {
+			out.Data = append(out.Data, *d)
+		}
+	}
+	return out, nil
 }
 
-// Search runs a web search (Google, Bing, or DuckDuckGo).
-func (c *Client) Search(ctx context.Context, q string, opts *SearchOptions) (*SearchResponse, error) {
+func (c *Client) Search(ctx context.Context, q string, opts *SearchOptions) (*SearchData, error) {
 	body := map[string]any{"q": q}
-	if opts != nil {
-		if opts.Engine != "" {
-			body["engine"] = opts.Engine
-		}
-		if opts.Num != nil {
-			body["num"] = *opts.Num
-		}
-		if opts.Start != nil {
-			body["start"] = *opts.Start
-		}
-		if opts.Country != "" {
-			body["country"] = opts.Country
-		}
-		if opts.Language != "" {
-			body["language"] = opts.Language
-		}
-	}
-	var out SearchResponse
-	if err := c.post(ctx, "/v1/search", body, &out); err != nil {
+	mergeSearch(body, opts)
+	var env searchEnvelope
+	if err := c.doJSON(ctx, http.MethodPost, "/v1/search", body, &env); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	out := &SearchData{Success: env.Success, CreditsUsed: env.CreditsUsed, ID: env.ID}
+	if env.Data != nil {
+		out.Web = env.Data.Web
+	}
+	return out, nil
+}
+
+func (c *Client) SearchStream(ctx context.Context, q string, opts *SearchOptions) ([]SearchStreamEvent, error) {
+	body := map[string]any{"q": q}
+	mergeSearch(body, opts)
+	res, err := c.send(ctx, http.MethodPost, "/v1/search/stream", body)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		b, _ := io.ReadAll(res.Body)
+		return nil, parseError(res.StatusCode, b)
+	}
+	var events []SearchStreamEvent
+	sc := bufio.NewScanner(res.Body)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var ev SearchStreamEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			return nil, err
+		}
+		events = append(events, ev)
+	}
+	return events, sc.Err()
+}
+
+func (c *Client) GetLog(ctx context.Context, id string) (*LogRow, error) {
+	var row LogRow
+	if err := c.doJSON(ctx, http.MethodGet, "/v1/logs/"+url.PathEscape(id), nil, &row); err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (c *Client) GetLogResult(ctx context.Context, id string) (json.RawMessage, error) {
+	var raw json.RawMessage
+	if err := c.doJSON(ctx, http.MethodGet, "/v1/logs/"+url.PathEscape(id)+"/result", nil, &raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+func documentFromEnv(env scrapeEnvelope) *Document {
+	doc := env.Data
+	if doc == nil {
+		doc = &Document{}
+	}
+	doc.Success = env.Success
+	if env.Error != "" {
+		doc.Error = env.Error
+	}
+	return doc
+}
+
+func mergeSearch(body map[string]any, opts *SearchOptions) {
+	if opts == nil {
+		return
+	}
+	if opts.Engine != "" {
+		body["engine"] = opts.Engine
+	}
+	if opts.Num != nil {
+		body["num"] = *opts.Num
+	}
+	if opts.Start != nil {
+		body["start"] = *opts.Start
+	}
+	if opts.Country != "" {
+		body["country"] = opts.Country
+	}
+	if opts.Language != "" {
+		body["language"] = opts.Language
+	}
 }
 
 func mergeScrape(body map[string]any, opts *ScrapeOptions) {
@@ -109,9 +190,6 @@ func mergeScrape(body map[string]any, opts *ScrapeOptions) {
 	}
 	if len(opts.Formats) > 0 {
 		body["formats"] = opts.Formats
-	}
-	if opts.ExtractMainContent != nil {
-		body["extractMainContent"] = *opts.ExtractMainContent
 	}
 	if opts.SkipCache != nil {
 		body["skipCache"] = *opts.SkipCache
@@ -125,37 +203,69 @@ func mergeScrape(body map[string]any, opts *ScrapeOptions) {
 	if opts.JSONOptions != nil {
 		body["jsonOptions"] = opts.JSONOptions
 	}
+	if opts.Country != "" {
+		body["country"] = opts.Country
+	}
+	if opts.Language != "" {
+		body["language"] = opts.Language
+	}
+	if opts.Location != nil {
+		body["location"] = opts.Location
+	}
+	if opts.RedactPII != nil {
+		body["redactPII"] = opts.RedactPII
+	}
 }
 
-func (c *Client) post(ctx context.Context, path string, payload any, dest any) error {
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return err
+func (c *Client) doJSON(ctx context.Context, method, path string, payload any, dest any) error {
+	var last error
+	attempts := c.maxRetries + 1
+	for i := 0; i < attempts; i++ {
+		res, err := c.send(ctx, method, path, payload)
+		if err != nil {
+			return err
+		}
+		body, err := io.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			return err
+		}
+		if res.StatusCode < 200 || res.StatusCode >= 300 {
+			cfErr := parseError(res.StatusCode, body)
+			if i < attempts-1 {
+				if e, ok := cfErr.(*Error); ok && e.retryable() {
+					last = cfErr
+					time.Sleep(time.Duration(200*(1<<i)) * time.Millisecond)
+					continue
+				}
+			}
+			return cfErr
+		}
+		if dest == nil {
+			return nil
+		}
+		return json.Unmarshal(body, dest)
 	}
-	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.apiURL+path, bytes.NewReader(raw))
+	return last
+}
+
+func (c *Client) send(ctx context.Context, method, path string, payload any) (*http.Response, error) {
+	var reader io.Reader
+	if payload != nil {
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		reader = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.apiURL+path, reader)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	res, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return parseError(res.StatusCode, body)
-	}
-	if dest == nil {
-		return nil
-	}
-	return json.Unmarshal(body, dest)
+	req.Header.Set("User-Agent", "crawlfox-go/"+SDKVersion)
+	return c.http.Do(req)
 }
 
 func parseError(status int, body []byte) error {

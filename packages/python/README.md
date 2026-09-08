@@ -54,9 +54,11 @@ Typed models (Pydantic) with **snake_case** fields — same idea as Firecrawl:
 
 | Method | Returns | Access |
 |--------|---------|--------|
-| `scrape` | `Document` | `doc.markdown`, `doc.metadata.source_url` |
+| `scrape` / `scrape_get` | `Document` | `doc.markdown`, `doc.metadata.source_url` |
 | `search` | `SearchData` | `results.web[i].url` |
+| `search_stream` | `SearchStreamEvent` | `event.type`, `event.data` |
 | `batch` | `BatchScrapeResult` | `batch.data[i].markdown` |
+| `get_log` / `get_log_result` | `LogRow` / JSON | `row.status` |
 
 API camelCase (`sourceURL`, `rawHtml`, …) is normalized automatically.
 

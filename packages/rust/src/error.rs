@@ -58,4 +58,19 @@ impl Error {
             _ => None,
         }
     }
+
+    pub fn should_retry(&self) -> bool {
+        match self {
+            Error::Api {
+                retryable: Some(true),
+                ..
+            } => true,
+            Error::Api {
+                retryable: Some(false),
+                ..
+            } => false,
+            Error::Api { status, .. } => matches!(*status, 502 | 503 | 504),
+            _ => false,
+        }
+    }
 }

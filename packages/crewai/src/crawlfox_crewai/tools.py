@@ -42,7 +42,7 @@ class CrawlFoxScrapeWebsiteTool(BaseTool):
 class CrawlFoxSearchTool(BaseTool):
     name: str = "CrawlFox search web"
     description: str = (
-        "Search Google/Bing/DuckDuckGo via CrawlFox and return ranked organic results."
+        "Search Google or DuckDuckGo via CrawlFox and return ranked organic results."
     )
     args_schema: Type[BaseModel] = SearchSchema
     api_key: Optional[str] = None

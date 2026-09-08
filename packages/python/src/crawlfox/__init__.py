@@ -7,8 +7,10 @@ from crawlfox.types import (
     CrawlFoxError,
     Document,
     DocumentMetadata,
+    LogRow,
     SearchData,
     SearchResultWeb,
+    SearchStreamEvent,
 )
 
 __all__ = [
@@ -18,7 +20,9 @@ __all__ = [
     "CrawlFoxError",
     "Document",
     "DocumentMetadata",
+    "LogRow",
     "SearchData",
     "SearchResultWeb",
+    "SearchStreamEvent",
 ]
 __version__ = "0.1.0"

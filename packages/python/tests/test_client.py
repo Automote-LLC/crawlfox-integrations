@@ -43,7 +43,13 @@ def test_scrape_returns_document() -> None:
     transport = httpx.MockTransport(handler)
     client = httpx.Client(transport=transport)
     cf = CrawlFox(api_key="cfx_test", client=client)
-    doc = cf.scrape("https://example.com", formats=["markdown"], skip_cache=True)
+    doc = cf.scrape(
+        "https://example.com",
+        formats=["markdown"],
+        skip_cache=True,
+        country="de",
+        redact_pii=True,
+    )
 
     assert isinstance(doc, Document)
     assert doc.markdown == "# Hi"
@@ -55,6 +61,68 @@ def test_scrape_returns_document() -> None:
     assert captured["url"].endswith("/v1/scrape")
     assert captured["auth"] == "Bearer cfx_test"
     assert captured["body"]["skipCache"] is True
+    assert captured["body"]["country"] == "de"
+    assert captured["body"]["redactPII"] is True
+
+
+def test_retries_then_succeeds() -> None:
+    hits = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        hits["n"] += 1
+        if hits["n"] == 1:
+            return httpx.Response(
+                429,
+                json={"code": "RATE_LIMIT_EXCEEDED", "message": "slow", "retryable": True},
+            )
+        return httpx.Response(200, json={"success": True, "data": {"markdown": "# ok"}})
+
+    cf = CrawlFox(
+        api_key="cfx_test",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    doc = cf.scrape("https://example.com")
+    assert doc.markdown == "# ok"
+    assert hits["n"] == 2
+
+
+def test_search_stream() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text='{"type":"page","data":{"web":[{"url":"https://a.com"}]}}\n{"type":"done","creditsUsed":1}\n',
+        )
+
+    cf = CrawlFox(
+        api_key="cfx_test",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    events = list(cf.search_stream("q", num=20))
+    assert events[0].type == "page"
+    assert events[1].type == "done"
+    assert events[1].credits_used == 1
+
+
+def test_get_log() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url).endswith("/v1/logs/abc")
+        return httpx.Response(
+            200,
+            json={
+                "id": "abc",
+                "started_at_ms": 1,
+                "duration_ms": 2,
+                "url": "https://example.com",
+                "status": 200,
+            },
+        )
+
+    cf = CrawlFox(
+        api_key="cfx_test",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    row = cf.get_log("abc")
+    assert row.status == 200
 
 
 def test_search_returns_search_data() -> None:

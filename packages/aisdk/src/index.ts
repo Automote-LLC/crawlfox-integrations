@@ -7,21 +7,10 @@ export interface CrawlFoxToolsOptions extends CrawlFoxClientOptions {
   batch?: boolean;
 }
 
+const FORMATS = ["markdown", "html", "rawHtml", "json", "links", "images", "emails"] as const;
+
 /**
  * Vercel AI SDK tools for CrawlFox scrape and search.
- *
- * @example
- * ```ts
- * import { generateText, stepCountIs } from "ai";
- * import { CrawlFoxTools } from "crawlfox-aisdk";
- *
- * const { text } = await generateText({
- *   model: "anthropic/claude-sonnet-4-5",
- *   tools: CrawlFoxTools(),
- *   stopWhen: stepCountIs(10),
- *   prompt: "Search for CrawlFox and summarize the homepage.",
- * });
- * ```
  */
 export function CrawlFoxTools(options: CrawlFoxToolsOptions = {}) {
   const client = new CrawlFox(options);
@@ -33,32 +22,32 @@ export function CrawlFoxTools(options: CrawlFoxToolsOptions = {}) {
     parameters: z.object({
       url: z.string().url().describe("Fully-qualified URL to scrape"),
       formats: z
-        .array(z.enum(["markdown", "html", "text", "links"]))
+        .array(z.enum(FORMATS))
         .optional()
         .describe("Output formats; defaults to markdown"),
-      extractMainContent: z.boolean().optional(),
       skipCache: z.boolean().optional(),
+      country: z.string().optional(),
+      language: z.string().optional(),
     }),
-    execute: async ({ url, formats, extractMainContent, skipCache }) => {
-      const result = await client.scrape(url, {
+    execute: async ({ url, formats, skipCache, country, language }) => {
+      return client.scrape(url, {
         formats: formats ?? ["markdown"],
-        extractMainContent,
         skipCache,
+        country,
+        language,
       });
-      return result.data ?? result;
     },
   });
 
   const search = tool({
-    description: "Search the web with Google, Bing, or DuckDuckGo via CrawlFox.",
+    description: "Search the web with Google or DuckDuckGo via CrawlFox.",
     parameters: z.object({
       q: z.string().describe("Search query"),
-      engine: z.enum(["google", "bing", "duckduckgo"]).optional(),
+      engine: z.enum(["google", "duckduckgo"]).optional(),
       num: z.number().int().min(1).max(100).optional(),
     }),
     execute: async ({ q, engine, num }) => {
-      const result = await client.search(q, { engine, num });
-      return result.data ?? result;
+      return client.search(q, { engine, num });
     },
   });
 
@@ -69,11 +58,10 @@ export function CrawlFoxTools(options: CrawlFoxToolsOptions = {}) {
       description: "Scrape up to 100 URLs in one CrawlFox batch call.",
       parameters: z.object({
         urls: z.array(z.string().url()).min(1).max(100),
-        formats: z.array(z.enum(["markdown", "html", "text", "links"])).optional(),
+        formats: z.array(z.enum(FORMATS)).optional(),
       }),
       execute: async ({ urls, formats }) => {
-        const result = await client.batch(urls, { formats: formats ?? ["markdown"] });
-        return result;
+        return client.batch(urls, { formats: formats ?? ["markdown"] });
       },
     });
   }
@@ -81,4 +69,4 @@ export function CrawlFoxTools(options: CrawlFoxToolsOptions = {}) {
   return tools;
 }
 
-export { scrape, search } from "./tools.js";
+export { scrape, search, batch } from "./tools.js";
