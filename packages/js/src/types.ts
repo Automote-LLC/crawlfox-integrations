@@ -1,4 +1,4 @@
-export const SDK_VERSION = "0.1.2";
+export const SDK_VERSION = "0.1.3";
 
 /** Output formats the gateway accepts. `text` was removed (400 FORMAT_UNAVAILABLE). */
 export type ScrapeFormat =
@@ -53,7 +53,7 @@ export interface ScrapeOptions {
   redactPII?: RedactPii;
 }
 
-export type SearchEngine = "google" | "duckduckgo";
+export type SearchEngine = "google" | "bing" | "duckduckgo";
 
 export interface SearchOptions {
   engine?: SearchEngine;

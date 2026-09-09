@@ -2,7 +2,7 @@
 
 Official Python SDK for the [CrawlFox](https://crawlfox.io) API.
 
-Scrape a URL into markdown (and other formats), search Google or DuckDuckGo, scrape up to 100 URLs in one call, and look up your own request logs.
+Scrape a URL into markdown and other formats, search Google, Bing, or DuckDuckGo, batch scrape URLs, and look up your request logs.
 
 Get a key from the [CrawlFox dashboard](https://crawlfox.io). Send it as `Authorization: Bearer`. Do not put keys in frontend code.
 
@@ -50,7 +50,7 @@ Fields are snake_case on the models (`source_url`, `raw_html`, `skip_cache`). Th
 
 ## Scrape
 
-`POST /v1/scrape`. The server renders blocked and JavaScript-heavy pages. One credit per page, including cache hits. Failed calls are free.
+`POST /v1/scrape`. The server renders blocked and JavaScript-heavy pages. One credit per page.
 
 ```python
 doc = app.scrape(
@@ -90,7 +90,7 @@ doc = app.scrape(
 print(doc.json)
 ```
 
-Other kwargs: `skip_cache`, `timeout` (ms, default 90000, max 90000), `country`, `language`, `location`, `redact_pii`, `zdr`, `extract_main_content`.
+Other kwargs: `skip_cache`, `timeout` (ms, default 90000), `country`, `language`, `location`, `redact_pii`, `zdr`, `extract_main_content`.
 
 ```python
 doc = app.scrape_get("https://example.com")  # GET /v1/scrape/:url
@@ -98,12 +98,11 @@ doc = app.scrape_get("https://example.com")  # GET /v1/scrape/:url
 
 ## Search
 
-`POST /v1/search`. Engines: `google` (default) and `duckduckgo`. Bing is not live (`engine="bing"` returns 400).
-
-Credits: 1 per 10 requested results. `num=20` costs 2 credits. Failed calls are free. `num` is 1 to 100. Google `start` goes up to 90.
+`POST /v1/search`. Engines: `google`, `bing`, and `duckduckgo`. Search uses 1 credit per 10 requested results (`num`).
 
 ```python
 google = app.search("python asyncio", engine="google", num=10, country="us", language="en")
+bing = app.search("python asyncio", engine="bing", num=10)
 ddg = app.search("python asyncio", engine="duckduckgo", num=10)
 ```
 
@@ -116,12 +115,12 @@ for event in app.search_stream("rust async tutorial", num=20):
     if event.type == "page":
         print(event.data)
     if event.type == "done":
-        print("done", event.partial, event.credits_used)
+        print("done", event.credits_used)
 ```
 
 ## Batch scrape
 
-`POST /v1/batch`. Up to 100 URLs. Same formats for every URL. Order preserved. One credit per successful URL. `timeout` is per URL. `json_options` is omitted.
+`POST /v1/batch`. Same formats for every URL. Order preserved. One credit per URL. `timeout` is per URL. `json_options` is omitted.
 
 ```python
 batch = app.batch(
@@ -135,11 +134,12 @@ for page in batch.data:
 
 ## Logs
 
-Free. Your own request ids only.
+Pass `doc.metadata.scrape_id` from a scrape, or `results.id` from search.
 
 ```python
-row = app.get_log(id)
-stored = app.get_log_result(id)
+doc = app.scrape("https://example.com")
+row = app.get_log(doc.metadata.scrape_id)
+stored = app.get_log_result(doc.metadata.scrape_id)
 ```
 
 ## Async
@@ -170,13 +170,13 @@ except CrawlFoxError as e:
     print(e.status, e.code, e.retryable, e.message)
 ```
 
-Retries use `502` / `503` / `504` and `retryable: true`. Stable codes include `MISSING_URL`, `INVALID_URL`, `UPSTREAM_TIMEOUT`, `BOT_WALL`, `NO_PUBLIC_CONTENT`.
+Retries use `502` / `503` / `504` and `retryable: true`.
 
 OpenAPI: https://crawlfox.io/openapi.json
 
 ## Credits
 
-No per-minute cap. Scrape is 1 credit per page. Search is 1 credit per 10 requested results.
+Scrape is 1 credit per page. Search is 1 credit per 10 requested results.
 
 ## License
 

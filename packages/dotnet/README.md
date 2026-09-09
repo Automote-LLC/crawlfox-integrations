@@ -1,6 +1,6 @@
 # Crawlfox (.NET)
 
-Official .NET SDK for the [CrawlFox](https://crawlfox.io) API: scrape, search (Google or DuckDuckGo), batch (up to 100 URLs), and logs.
+Official .NET SDK for the [CrawlFox](https://crawlfox.io) API: scrape, search (Google, Bing, or DuckDuckGo), batch scrape, and logs.
 
 Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY`.
 

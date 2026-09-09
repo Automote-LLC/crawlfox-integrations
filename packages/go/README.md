@@ -2,7 +2,7 @@
 
 Official Go SDK for the [CrawlFox](https://crawlfox.io) API.
 
-Scrape a URL, search Google or DuckDuckGo, batch up to 100 URLs, stream search, and read logs.
+Scrape a URL, search Google, Bing, or DuckDuckGo, batch scrape URLs, stream search, and read logs.
 
 Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY` or pass `APIKey`.
 
@@ -79,11 +79,11 @@ page, err := client.ScrapeGet(ctx, "https://example.com")
 
 ## Search
 
-`Engine`: `google` or `duckduckgo`. `Num` 1 to 100. `Start` for pagination (Google up to 90). `Country` / `Language` are two-letter codes.
+`Engine`: `google`, `bing`, or `duckduckgo`. `Num` is how many results to request. `Start` is the pagination offset. `Country` / `Language` are two-letter codes.
 
 `SearchStream` reads NDJSON (`page` / `done` / `error`).
 
-Credits: scrape 1 per page, search 1 per 10 requested results. Failed calls are free.
+Credits: scrape 1 per page, search 1 per 10 requested results.
 
 ## Logs
 

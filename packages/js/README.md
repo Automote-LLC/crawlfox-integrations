@@ -2,7 +2,7 @@
 
 Official JavaScript and TypeScript SDK for the [CrawlFox](https://crawlfox.io) API.
 
-Scrape a URL into markdown (and other formats), search Google or DuckDuckGo, scrape up to 100 URLs in one call, and look up your own request logs.
+Scrape a URL into markdown and other formats, search Google, Bing, or DuckDuckGo, batch scrape URLs, and look up your request logs.
 
 Get a key from the [CrawlFox dashboard](https://crawlfox.io). Send it as `Authorization: Bearer`. Create and rotate keys there. Do not put keys in frontend code.
 
@@ -47,7 +47,7 @@ The HTTP API wraps scrape payloads in `{ success, data }`. This client unwraps t
 
 ## Scrape
 
-`POST /v1/scrape`. Blocked and JavaScript-heavy pages are rendered on the server. One credit per page, including cached pages. Failed calls are free. Extra formats on the same URL do not add credits.
+`POST /v1/scrape`. Blocked and JavaScript-heavy pages are rendered on the server. One credit per page. Extra formats on the same URL do not add credits.
 
 ```ts
 const page = await app.scrape("https://example.com/", {
@@ -78,13 +78,11 @@ const page = await app.scrape("https://example.com/", {
 There is no separate extract endpoint. Include `"json"` in `formats` and map keys to CSS selectors. Extraction is deterministic. It does not call a model.
 
 ```ts
-const page = await app.scrape("https://example.com/product/42", {
+const page = await app.scrape("https://example.com/", {
   formats: ["json"],
   jsonOptions: {
     selectors: {
-      title: "h1",
-      price: ".price",
-      stock: { selector: "[data-stock]", attr: "data-stock" },
+      heading: "h1",
     },
   },
 });
@@ -96,7 +94,7 @@ console.log(page.json);
 | Option | Notes |
 | --- | --- |
 | `skipCache` | Fetch the page again instead of a cached result |
-| `timeout` | Per-page wait in milliseconds. Default 90000. Below 1000 is rejected. Above 90000 is capped |
+| `timeout` | Per-page wait in milliseconds. Default 90000 |
 | `country` / `language` | Localization hints |
 | `location` | `{ country, languages }` |
 | `redactPII` | `true`, or `{ mode, entities, replaceStyle }` |
@@ -112,9 +110,9 @@ const page = await app.scrapeGet("https://example.com");
 
 ## Search
 
-`POST /v1/search`. Ranked organic results in `hits.web`. Engines: `google` (default) and `duckduckgo`. `engine: "bing"` is not live yet (the API returns 400).
+`POST /v1/search`. Ranked organic results in `hits.web`. Engines: `google`, `bing`, and `duckduckgo`.
 
-Credits: 1 per 10 requested results, rounded up. `num: 20` costs 2 credits, even if fewer hits come back. Failed calls are free.
+Search uses 1 credit per 10 requested results (`num`).
 
 ```ts
 const google = await app.search("python asyncio", {
@@ -125,15 +123,16 @@ const google = await app.search("python asyncio", {
   language: "en",
 });
 
+const bing = await app.search("python asyncio", { engine: "bing", num: 10 });
 const ddg = await app.search("python asyncio", { engine: "duckduckgo", num: 10 });
 ```
 
 | Option | Notes |
 | --- | --- |
 | `q` | Query (first argument) |
-| `engine` | `google` or `duckduckgo` |
-| `num` | 1 to 100. Results arrive in pages of 10. Default 10 |
-| `start` | Offset. Google supports up to 90 |
+| `engine` | `google`, `bing`, or `duckduckgo` |
+| `num` | How many results to request. Default 10 |
+| `start` | Offset for pagination |
 | `country` | Two-letter code, for example `us` |
 | `language` | Two-letter code, for example `en` |
 
@@ -141,25 +140,22 @@ Each hit has `url`, `title`, `description`, and `position`.
 
 ### Streaming search
 
-For larger `num`, `POST /v1/search/stream` sends NDJSON. Events are `page`, `done`, and `error`. A final `done` can set `partial: true` when fewer results arrive than requested.
+`POST /v1/search/stream` sends NDJSON as pages arrive. Events are `page`, `done`, and `error`.
 
 ```ts
-for await (const event of app.searchStream("rust async tutorial", { num: 20 })) {
+for await (const event of app.searchStream("rust async tutorial", { engine: "google", num: 20 })) {
   if (event.type === "page") {
     console.log(event.data?.web?.length);
   }
   if (event.type === "done") {
-    console.log("done", event.partial, event.creditsUsed);
-  }
-  if (event.type === "error") {
-    console.error(event.code, event.message);
+    console.log("done", event.creditsUsed);
   }
 }
 ```
 
 ## Batch scrape
 
-`POST /v1/batch`. Up to 100 URLs. Same formats for every URL. Results stay in input order. One credit per successful URL. Failed URLs are free. `timeout` applies per URL, not to the whole batch. `jsonOptions` is not sent on batch.
+`POST /v1/batch`. Same formats for every URL. Results stay in input order. One credit per URL. `timeout` applies per URL, not to the whole batch. `jsonOptions` is not sent on batch.
 
 ```ts
 const batch = await app.batch(
@@ -174,16 +170,17 @@ for (const doc of batch.data) {
 
 ## Logs
 
-Look up a past request you made. Log reads are free.
+Pass the scrape id from `page.metadata.scrapeId`, or the `id` on a search response.
 
 ```ts
-const row = await app.getLog(id);
+const page = await app.scrape("https://example.com");
+const row = await app.getLog(page.metadata.scrapeId);
 console.log(row.status, row.duration_ms, row.final_outcome);
 
-const stored = await app.getLogResult(id);
+const stored = await app.getLogResult(page.metadata.scrapeId);
 ```
 
-`getLog` is `GET /v1/logs/:id`. `getLogResult` is `GET /v1/logs/:id/result` (stored scrape body).
+`getLog` is `GET /v1/logs/:id`. `getLogResult` is `GET /v1/logs/:id/result`.
 
 ## Client options
 
@@ -197,19 +194,16 @@ const app = new CrawlFox({
 });
 ```
 
-Retries apply to `502` / `503` / `504` and to errors the API marks `retryable: true`. Quota and validation errors are not retried.
+Retries apply to `502` / `503` / `504` and to errors the API marks `retryable: true`.
 
-## Credits and limits
+## Credits
 
-There is no per-minute request cap. Credits are the limit.
-
-- Scrape: 1 credit per page (cached or fresh)
+- Scrape: 1 credit per page
 - Search: 1 credit per 10 requested results (`num`)
-- Failed calls: free
 
 ## Errors
 
-Failed requests throw `CrawlFoxError` with `status`, `code`, `retryable`, and `body`. Branch on `code`. HTTP status text can change. Codes stay stable.
+Failed requests throw `CrawlFoxError` with `status`, `code`, `retryable`, and `body`. Branch on `code`.
 
 ```ts
 try {
@@ -220,8 +214,6 @@ try {
   }
 }
 ```
-
-Examples from the API: `MISSING_URL`, `INVALID_URL`, `UPSTREAM_TIMEOUT` (retryable), `UPSTREAM_NOT_FOUND`, `BOT_WALL` (retryable), `NO_PUBLIC_CONTENT`.
 
 OpenAPI: https://crawlfox.io/openapi.json
 

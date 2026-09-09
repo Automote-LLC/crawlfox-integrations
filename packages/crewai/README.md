@@ -14,6 +14,6 @@ search_tool = CrawlFoxSearchTool()
 # Pass tools=[scrape_tool, search_tool] to your CrewAI agent
 ```
 
-Set `CRAWLFOX_API_KEY` or pass `api_key=` on each tool. Search uses Google or DuckDuckGo through the same public API as `crawlfox-py`.
+Set `CRAWLFOX_API_KEY` or pass `api_key=` on each tool. Search uses Google, Bing, or DuckDuckGo through the same public API as `crawlfox-py`.
 
 Docs: https://docs.crawlfox.io

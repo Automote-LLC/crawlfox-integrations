@@ -2,7 +2,7 @@
 
 Official Rust SDK for the [CrawlFox](https://crawlfox.io) API.
 
-Scrape a URL, search Google or DuckDuckGo, batch up to 100 URLs, stream search, and read logs.
+Scrape a URL, search Google, Bing, or DuckDuckGo, batch scrape URLs, stream search, and read logs.
 
 Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY` or pass `api_key`.
 
@@ -87,7 +87,7 @@ let page = client.scrape_get("https://example.com").await?;
 
 ## Search
 
-Engines: `google`, `duckduckgo`. `num` 1 to 100. `start` for offset. Credits: 1 per 10 requested results.
+Engines: `google`, `bing`, `duckduckgo`. `num` is how many results to request. `start` is the offset. Credits: 1 per 10 requested results.
 
 `search_stream` returns NDJSON events (`page` / `done` / `error`).
 

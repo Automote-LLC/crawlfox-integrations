@@ -28,19 +28,17 @@ JavaScript on npm: https://www.npmjs.com/package/crawlfox
 
 ## API the SDKs cover
 
-Live endpoints only. Structured extraction is scrape plus `jsonOptions` (CSS selectors). There is no separate extract, crawl, or map API yet.
-
 | Method | Path | What you get |
 | --- | --- | --- |
 | scrape | `POST /v1/scrape` | One URL. Formats: markdown, html, rawHtml, json, links, images, emails |
 | scrape GET | `GET /v1/scrape/:url` | Lightweight scrape of an encoded URL |
-| batch | `POST /v1/batch` | Up to 100 URLs, same formats, order preserved |
-| search | `POST /v1/search` | Google or DuckDuckGo. `num` 1 to 100. Bing is not live |
+| batch | `POST /v1/batch` | Many URLs, same formats, order preserved |
+| search | `POST /v1/search` | Google, Bing, or DuckDuckGo |
 | search stream | `POST /v1/search/stream` | NDJSON `page` / `done` / `error` |
-| logs | `GET /v1/logs/:id` | Status and timing of your own request (free) |
-| log result | `GET /v1/logs/:id/result` | Stored scrape body (free) |
+| logs | `GET /v1/logs/:id` | Status and timing (`metadata.scrapeId` or search `id`) |
+| log result | `GET /v1/logs/:id/result` | Stored scrape body |
 
-Credits: 1 per scraped page, 1 per 10 requested search results. Failed calls are free. No per-minute request cap.
+Credits: 1 per scraped page, 1 per 10 requested search results.
 
 Auth: `CRAWLFOX_API_KEY` or constructor `apiKey` / `api_key` / `APIKey`.
 

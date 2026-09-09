@@ -19,7 +19,7 @@ ScrapeFormat = Literal[
     "emails",
 ]
 
-SearchEngine = Literal["google", "duckduckgo"]
+SearchEngine = Literal["google", "bing", "duckduckgo"]
 
 RedactPiiMode = Literal["accurate", "aggressive", "fast"]
 RedactPiiEntity = Literal["PERSON", "EMAIL", "PHONE", "LOCATION", "FINANCIAL", "SECRET"]

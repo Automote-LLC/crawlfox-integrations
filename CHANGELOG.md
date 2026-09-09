@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- README and search types: Bing is a live engine; drop advertised batch caps and credit caveats that do not match how we want the product described.
+
 ## 0.1.2
 
 - Expand SDK READMEs from the live CrawlFox API (scrape formats, json selectors, search engines, batch, logs, credits, errors).

@@ -15,7 +15,7 @@ npx zapier push
 ## Actions
 
 - **Scrape URL**: `POST /v1/scrape` (markdown and other formats)
-- **Search Web**: `POST /v1/search` (Google or DuckDuckGo)
+- **Search Web**: `POST /v1/search` (Google, Bing, or DuckDuckGo)
 
 Users paste a CrawlFox API key (`cfx_...`) from the [dashboard](https://crawlfox.io).
 

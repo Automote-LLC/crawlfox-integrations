@@ -173,7 +173,7 @@ export class CrawlFox {
     return documentFromEnvelope(envelope);
   }
 
-  /** Scrape up to 100 URLs with the same options (`jsonOptions` is omitted). */
+  /** Scrape URLs with the same options (`jsonOptions` is omitted). */
   async batch(
     urls: string[],
     options: Omit<ScrapeOptions, "jsonOptions"> = {},
