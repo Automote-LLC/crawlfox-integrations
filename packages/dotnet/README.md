@@ -14,3 +14,7 @@ var page = await app.Scrape("https://example.com", new { formats = new[] { "mark
 Console.WriteLine(page.GetProperty("markdown"));
 var hits = await app.Search("crawlfox", new { engine = "google", num = 5 });
 ```
+
+```bash
+dotnet test Crawlfox.Tests/Crawlfox.Tests.csproj
+```

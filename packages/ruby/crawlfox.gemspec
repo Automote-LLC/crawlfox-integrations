@@ -9,5 +9,6 @@ Gem::Specification.new do |s|
   s.homepage = "https://crawlfox.io"
   s.license = "MIT"
   s.files = ["lib/crawlfox.rb"]
+  s.require_paths = ["lib"]
   s.required_ruby_version = ">= 3.1"
 end

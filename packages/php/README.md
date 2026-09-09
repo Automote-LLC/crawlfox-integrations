@@ -16,3 +16,9 @@ echo $doc['markdown'];
 $hits = $app->search('crawlfox', ['engine' => 'google', 'num' => 5]);
 $batch = $app->batch(['https://example.org'], ['formats' => ['markdown']]);
 ```
+
+```bash
+composer install
+vendor/bin/phpunit
+# live tests: CRAWLFOX_API_KEY=... vendor/bin/phpunit
+```

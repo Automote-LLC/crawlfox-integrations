@@ -53,5 +53,22 @@ cd packages/go && go test ./...
 # Rust SDK
 cd packages/rust && cargo test
 
-# PHP / Java / .NET / Ruby / Elixir are thin HTTP clients in packages/{php,java,dotnet,ruby,elixir} (not published yet).
+# PHP
+cd packages/php && composer install && vendor/bin/phpunit
+
+# Java
+cd packages/java && mvn test
+
+# .NET
+cd packages/dotnet && dotnet test Crawlfox.Tests/Crawlfox.Tests.csproj
+
+# Ruby
+cd packages/ruby && ruby -Ilib:test test/client_test.rb
+
+# Elixir
+cd packages/elixir && mix deps.get && mix test
 ```
+
+Set `CRAWLFOX_API_KEY` (and optionally `CRAWLFOX_API_URL`) to also run live scrape/search/batch tests against production. Without the key, live tests are skipped.
+
+GitHub Actions CI runs all nine language SDKs. Add repo secrets `CRAWLFOX_API_KEY` and optional `CRAWLFOX_API_URL` to enable live tests in CI.
