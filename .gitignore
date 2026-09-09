@@ -15,4 +15,16 @@ venv/
 .zapier/
 build/
 target/
+vendor/
+packages/php/vendor/
+packages/php/.phpunit.result.cache
+packages/java/target/
+packages/dotnet/bin/
+packages/dotnet/obj/
+packages/dotnet/Crawlfox.Tests/bin/
+packages/dotnet/Crawlfox.Tests/obj/
+packages/elixir/_build/
+packages/elixir/deps/
+*.user
+*.DotSettings.user
 *.exe

@@ -7,5 +7,10 @@
     <Version>0.1.0</Version>
     <Description>Official .NET SDK for the CrawlFox scrape and search API</Description>
     <Authors>Automote LLC</Authors>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Crawlfox.Tests/**" />
+    <None Remove="Crawlfox.Tests/**" />
+  </ItemGroup>
 </Project>
