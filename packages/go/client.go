@@ -27,9 +27,17 @@ func New(opts ClientOptions) (*Client, error) {
 		key = os.Getenv("CRAWLFOX_API_KEY")
 	}
 	if key == "" {
-		return nil, fmt.Errorf("CrawlFox API key required. Pass APIKey or set CRAWLFOX_API_KEY")
+		return nil, &Error{
+			Status:    401,
+			Code:      "UNAUTHORIZED",
+			Retryable: Bool(false),
+			message:   "CrawlFox API key required. Pass APIKey or set CRAWLFOX_API_KEY",
+		}
 	}
 	apiURL := opts.APIURL
+	if apiURL == "" {
+		apiURL = os.Getenv("CRAWLFOX_API_URL")
+	}
 	if apiURL == "" {
 		apiURL = DefaultAPIURL
 	}
@@ -54,9 +62,53 @@ func New(opts ClientOptions) (*Client, error) {
 	}, nil
 }
 
+func requireURL(pageURL string) error {
+	if strings.TrimSpace(pageURL) == "" {
+		return &Error{Status: 400, Code: "INVALID_REQUEST", Retryable: Bool(false), message: "url is required"}
+	}
+	return nil
+}
+
+func requireQuery(q string) error {
+	if strings.TrimSpace(q) == "" {
+		return &Error{Status: 400, Code: "INVALID_REQUEST", Retryable: Bool(false), message: "q is required"}
+	}
+	return nil
+}
+
+func requireBatch(urls []string) error {
+	if len(urls) == 0 {
+		return &Error{Status: 400, Code: "INVALID_REQUEST", Retryable: Bool(false), message: "urls must be a non-empty array"}
+	}
+	if len(urls) > 100 {
+		return &Error{Status: 400, Code: "INVALID_REQUEST", Retryable: Bool(false), message: "batch supports at most 100 URLs"}
+	}
+	for _, u := range urls {
+		if err := requireURL(u); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func defaultScrapeOpts(opts *ScrapeOptions) *ScrapeOptions {
+	if opts == nil {
+		return &ScrapeOptions{Formats: []string{"markdown"}}
+	}
+	if len(opts.Formats) == 0 {
+		cp := *opts
+		cp.Formats = []string{"markdown"}
+		return &cp
+	}
+	return opts
+}
+
 func (c *Client) Scrape(ctx context.Context, pageURL string, opts *ScrapeOptions) (*Document, error) {
+	if err := requireURL(pageURL); err != nil {
+		return nil, err
+	}
 	body := map[string]any{"url": pageURL}
-	mergeScrape(body, opts)
+	mergeScrape(body, defaultScrapeOpts(opts))
 	var env scrapeEnvelope
 	if err := c.doJSON(ctx, http.MethodPost, "/v1/scrape", body, &env); err != nil {
 		return nil, err
@@ -65,6 +117,9 @@ func (c *Client) Scrape(ctx context.Context, pageURL string, opts *ScrapeOptions
 }
 
 func (c *Client) ScrapeGet(ctx context.Context, pageURL string) (*Document, error) {
+	if err := requireURL(pageURL); err != nil {
+		return nil, err
+	}
 	path := "/v1/scrape/" + url.PathEscape(pageURL)
 	var env scrapeEnvelope
 	if err := c.doJSON(ctx, http.MethodGet, path, nil, &env); err != nil {
@@ -74,11 +129,16 @@ func (c *Client) ScrapeGet(ctx context.Context, pageURL string) (*Document, erro
 }
 
 func (c *Client) Batch(ctx context.Context, urls []string, opts *ScrapeOptions) (*BatchScrapeResult, error) {
+	if err := requireBatch(urls); err != nil {
+		return nil, err
+	}
 	body := map[string]any{"urls": urls}
 	if opts != nil {
 		cp := *opts
 		cp.JSONOptions = nil
-		mergeScrape(body, &cp)
+		mergeScrape(body, defaultScrapeOpts(&cp))
+	} else {
+		mergeScrape(body, defaultScrapeOpts(nil))
 	}
 	var env batchEnvelope
 	if err := c.doJSON(ctx, http.MethodPost, "/v1/batch", body, &env); err != nil {
@@ -94,6 +154,9 @@ func (c *Client) Batch(ctx context.Context, urls []string, opts *ScrapeOptions) 
 }
 
 func (c *Client) Search(ctx context.Context, q string, opts *SearchOptions) (*SearchData, error) {
+	if err := requireQuery(q); err != nil {
+		return nil, err
+	}
 	body := map[string]any{"q": q}
 	mergeSearch(body, opts)
 	var env searchEnvelope
@@ -108,6 +171,9 @@ func (c *Client) Search(ctx context.Context, q string, opts *SearchOptions) (*Se
 }
 
 func (c *Client) SearchStream(ctx context.Context, q string, opts *SearchOptions) ([]SearchStreamEvent, error) {
+	if err := requireQuery(q); err != nil {
+		return nil, err
+	}
 	body := map[string]any{"q": q}
 	mergeSearch(body, opts)
 	res, err := c.send(ctx, http.MethodPost, "/v1/search/stream", body)
@@ -223,6 +289,11 @@ func (c *Client) doJSON(ctx context.Context, method, path string, payload any, d
 	for i := 0; i < attempts; i++ {
 		res, err := c.send(ctx, method, path, payload)
 		if err != nil {
+			if i < attempts-1 {
+				last = err
+				time.Sleep(time.Duration(200*(1<<i)) * time.Millisecond)
+				continue
+			}
 			return err
 		}
 		body, err := io.ReadAll(res.Body)

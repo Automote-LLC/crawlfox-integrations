@@ -138,3 +138,14 @@ func TestErrorResponse(t *testing.T) {
 		t.Fatalf("unexpected error: %+v", cfErr)
 	}
 }
+
+func TestRejectsEmptyURL(t *testing.T) {
+	client, err := New(ClientOptions{APIKey: "cfx_test", APIURL: "http://127.0.0.1:1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Scrape(context.Background(), "  ", nil)
+	if err == nil || !strings.Contains(err.Error(), "url is required") {
+		t.Fatalf("got %v", err)
+	}
+}

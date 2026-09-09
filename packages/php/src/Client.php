@@ -54,6 +54,13 @@ final class Client
 
     public function scrape(string $url, array $options = []): array
     {
+        $url = trim($url);
+        if ($url === '') {
+            throw new CrawlfoxError('url is required', 400, 'INVALID_REQUEST', false);
+        }
+        if (!isset($options['formats'])) {
+            $options['formats'] = ['markdown'];
+        }
         return $this->document($this->request('POST', '/v1/scrape', ['url' => $url] + $options));
     }
 
@@ -64,6 +71,15 @@ final class Client
 
     public function batch(array $urls, array $options = []): array
     {
+        if ($urls === []) {
+            throw new CrawlfoxError('urls must be a non-empty array', 400, 'INVALID_REQUEST', false);
+        }
+        if (count($urls) > 100) {
+            throw new CrawlfoxError('batch supports at most 100 URLs', 400, 'INVALID_REQUEST', false);
+        }
+        if (!isset($options['formats'])) {
+            $options['formats'] = ['markdown'];
+        }
         $env = $this->request('POST', '/v1/batch', ['urls' => $urls] + $options);
         $data = [];
         foreach ($env['results'] ?? [] as $item) {
@@ -78,6 +94,10 @@ final class Client
 
     public function search(string $q, array $options = []): array
     {
+        $q = trim($q);
+        if ($q === '') {
+            throw new CrawlfoxError('q is required', 400, 'INVALID_REQUEST', false);
+        }
         $env = $this->request('POST', '/v1/search', ['q' => $q] + $options);
         return [
             'success' => $env['success'] ?? true,

@@ -5,6 +5,10 @@
   "license": "MIT",
   "author": "Automote LLC",
   "homepage": "https://crawlfox.io",
+  "bugs": {
+    "url": "https://github.com/Automote-LLC/crawlfox-integrations/issues"
+  },
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "https://github.com/Automote-LLC/crawlfox-integrations.git",

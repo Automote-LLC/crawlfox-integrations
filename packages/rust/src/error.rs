@@ -70,6 +70,7 @@ impl Error {
                 ..
             } => false,
             Error::Api { status, .. } => matches!(*status, 502 | 503 | 504),
+            Error::Http(e) => e.is_timeout() || e.is_connect() || e.is_request(),
             _ => false,
         }
     }

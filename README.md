@@ -28,7 +28,7 @@ Official CrawlFox SDKs and framework integrations for the public API (`https://a
 - `POST /v1/batch` — scrape up to 100 URLs
 - `POST /v1/search` — web search (Google, Bing, DuckDuckGo)
 
-There is **no** `/v1/crawl` or `/v1/map` endpoint today.
+There is **no** `/v1/crawl` or `/v1/map` endpoint today. SDKs match scrape, batch, search, and logs only.
 
 ## Auth
 
