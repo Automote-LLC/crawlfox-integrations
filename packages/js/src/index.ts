@@ -127,7 +127,7 @@ function batchBody(urls: string[], options: Omit<ScrapeOptions, "jsonOptions">):
  *
  * @example
  * ```ts
- * import { CrawlFox } from "@crawlfox.io/crawlfox";
+ * import { CrawlFox } from "crawlfox";
  *
  * const client = new CrawlFox({ apiKey: process.env.CRAWLFOX_API_KEY });
  * const page = await client.scrape("https://example.com", { formats: ["markdown"] });

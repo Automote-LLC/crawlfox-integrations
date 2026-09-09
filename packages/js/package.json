@@ -1,5 +1,5 @@
 {
-  "name": "@crawlfox.io/crawlfox",
+  "name": "crawlfox",
   "publishConfig": {
     "access": "public"
   },

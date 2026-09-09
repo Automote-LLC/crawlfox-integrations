@@ -7,7 +7,7 @@ Scrape pages to markdown, search the web, batch URLs, and look up your request l
 ## Install
 
 ```bash
-npm install @crawlfox.io/crawlfox
+npm install crawlfox
 ```
 
 Node 18+. Set `CRAWLFOX_API_KEY` or pass `apiKey`. Optional `CRAWLFOX_API_URL` (default `https://api.crawlfox.io`).
@@ -15,7 +15,7 @@ Node 18+. Set `CRAWLFOX_API_KEY` or pass `apiKey`. Optional `CRAWLFOX_API_URL` (
 ## Quickstart
 
 ```ts
-import { CrawlFox, CrawlFoxError } from "@crawlfox.io/crawlfox";
+import { CrawlFox, CrawlFoxError } from "crawlfox";
 
 const app = new CrawlFox(); // or { apiKey: "cfx_..." }
 

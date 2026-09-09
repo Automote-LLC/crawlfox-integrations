@@ -6,7 +6,7 @@ Official CrawlFox SDKs and framework integrations for the public API (`https://a
 
 | Package | Install | Description |
 |---------|---------|-------------|
-| **@crawlfox.io/crawlfox** | `npm install @crawlfox.io/crawlfox` | JavaScript / TypeScript SDK |
+| **crawlfox** | `npm install crawlfox` | JavaScript / TypeScript SDK |
 | **crawlfox-py** | `pip install crawlfox-py` | Python SDK |
 | **crawlfox (Go)** | `go get github.com/Automote-LLC/crawlfox-integrations/packages/go` | Go SDK |
 | **crawlfox (Rust)** | path/git crate `crawlfox` | Rust SDK |
