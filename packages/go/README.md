@@ -1,6 +1,10 @@
 # crawlfox (Go)
 
-Official Go SDK for the [CrawlFox](https://crawlfox.io) scrape + search API.
+Official Go SDK for the [CrawlFox](https://crawlfox.io) API.
+
+Scrape a URL, search Google or DuckDuckGo, batch up to 100 URLs, stream search, and read logs.
+
+Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY` or pass `APIKey`.
 
 ```bash
 go get github.com/Automote-LLC/crawlfox-integrations/packages/go@main
@@ -34,31 +38,58 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(page.Data.Markdown)
+	fmt.Println(page.Markdown)
 
-	results, err := client.Search(ctx, "crawlfox web scraping", &crawlfox.SearchOptions{
+	results, err := client.Search(ctx, "rust async tutorial", &crawlfox.SearchOptions{
 		Engine: "google",
-		Num:    crawlfox.Int(5),
+		Num:    crawlfox.Int(10),
 	})
 	if err != nil {
 		panic(err)
 	}
-	for _, hit := range results.Data.Web {
+	for _, hit := range results.Web {
 		fmt.Println(hit.Position, hit.Title, hit.URL)
 	}
 
-	batch, err := client.Batch(ctx, []string{"https://example.org", "https://example.net"}, &crawlfox.ScrapeOptions{
+	batch, err := client.Batch(ctx, []string{"https://example.com/", "https://example.org/"}, &crawlfox.ScrapeOptions{
 		Formats: []string{"markdown"},
 	})
 	if err != nil {
 		panic(err)
 	}
-	for _, item := range batch.Results {
-		if item.Data != nil {
-			fmt.Println(item.Data.Markdown[:min(80, len(item.Data.Markdown))])
-		}
+	for _, doc := range batch.Data {
+		fmt.Println(doc.Markdown)
 	}
 }
+```
+
+`Scrape` returns a `Document` (markdown and metadata on the struct, not under `.Data`). `Search` returns `SearchData` with `Web`. `Batch` returns `BatchScrapeResult` with `Data []Document`.
+
+## Scrape options
+
+Formats: `markdown`, `html`, `rawHtml`, `json`, `links`, `images`, `emails`. Default markdown.
+
+`JSONOptions.Selectors` maps field names to CSS selectors when `"json"` is in `Formats`. No separate extract API.
+
+Also: `SkipCache`, `Timeout` (ms, cap 90000), `Country`, `Language`, `Location`, `RedactPII`, `ZDR`.
+
+```go
+page, err := client.ScrapeGet(ctx, "https://example.com")
+```
+
+## Search
+
+`Engine`: `google` or `duckduckgo`. `Num` 1 to 100. `Start` for pagination (Google up to 90). `Country` / `Language` are two-letter codes.
+
+`SearchStream` reads NDJSON (`page` / `done` / `error`).
+
+Credits: scrape 1 per page, search 1 per 10 requested results. Failed calls are free.
+
+## Logs
+
+```go
+row, err := client.GetLog(ctx, id)
+body, err := client.GetLogResult(ctx, id)
 ```
 
 ## Errors
@@ -71,6 +102,8 @@ if err != nil {
 	}
 }
 ```
+
+Retries on 502/503/504 and `retryable: true`.
 
 ## Docs
 

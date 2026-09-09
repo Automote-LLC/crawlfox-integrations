@@ -39,7 +39,7 @@ from crawlfox.types import (
 
 
 class AsyncCrawlFox:
-    """Async CrawlFox client — mirrors ``CrawlFox`` with ``await``."""
+    """Async CrawlFox client. Same methods as ``CrawlFox``, used with ``await``."""
 
     def __init__(
         self,

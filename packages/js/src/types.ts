@@ -1,4 +1,4 @@
-export const SDK_VERSION = "0.1.1";
+export const SDK_VERSION = "0.1.2";
 
 /** Output formats the gateway accepts. `text` was removed (400 FORMAT_UNAVAILABLE). */
 export type ScrapeFormat =
@@ -148,7 +148,7 @@ export interface CrawlFoxClientOptions {
   apiUrl?: string;
   /** HTTP round-trip timeout in ms. Defaults to 120_000. */
   timeoutMs?: number;
-  /** Retries for retryable errors (429/5xx). Defaults to 2. */
+  /** Extra attempts after retryable API or network errors. Defaults to 2. */
   maxRetries?: number;
   /** Custom fetch implementation (for tests or edge runtimes). */
   fetch?: typeof fetch;

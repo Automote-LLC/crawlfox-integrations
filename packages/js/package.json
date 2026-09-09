@@ -3,8 +3,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.1.1",
-  "description": "Official JavaScript SDK for the CrawlFox web scraping and search API",
+  "version": "0.1.2",
+  "description": "Official JavaScript SDK for CrawlFox: scrape pages to markdown, search Google or DuckDuckGo, and batch URLs",
   "license": "MIT",
   "author": "Automote LLC",
   "homepage": "https://crawlfox.io",
@@ -47,9 +47,11 @@
   },
   "keywords": [
     "crawlfox",
+    "scrape",
     "web-scraping",
+    "search",
     "serp",
     "markdown",
-    "llm"
+    "batch"
   ]
 }

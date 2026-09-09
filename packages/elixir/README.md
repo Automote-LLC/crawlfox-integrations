@@ -1,6 +1,8 @@
 # crawlfox (Elixir)
 
-Official Elixir SDK for the [CrawlFox](https://crawlfox.io) scrape and search API.
+Official Elixir SDK for the [CrawlFox](https://crawlfox.io) API: scrape, search (Google or DuckDuckGo), batch (up to 100 URLs), and logs.
+
+Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY`.
 
 ```elixir
 {:crawlfox, "~> 0.1.0"}
@@ -8,10 +10,25 @@ Official Elixir SDK for the [CrawlFox](https://crawlfox.io) scrape and search AP
 
 ```elixir
 client = Crawlfox.new()
-page = Crawlfox.scrape(client, "https://example.com", %{"formats" => ["markdown"]})
-hits = Crawlfox.search(client, "crawlfox", %{"engine" => "google", "num" => 5})
+
+page = Crawlfox.scrape(client, "https://example.com", %{
+  "formats" => ["markdown", "links"]
+})
+
+hits = Crawlfox.search(client, "rust async tutorial", %{
+  "engine" => "google",
+  "num" => 10
+})
+
+batch = Crawlfox.batch(client, ["https://example.com/", "https://example.org/"], %{
+  "formats" => ["markdown"]
+})
 ```
+
+Formats: `markdown`, `html`, `rawHtml`, `json`, `links`, `images`, `emails`. CSS selectors live under `jsonOptions` when you request `json`. Credits: 1 per page, 1 per 10 requested search results.
 
 ```bash
 mix deps.get && mix test
 ```
+
+Docs: https://docs.crawlfox.io

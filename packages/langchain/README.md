@@ -1,6 +1,6 @@
 # langchain-crawlfox
 
-LangChain document loader and tools for [CrawlFox](https://crawlfox.io).
+LangChain document loader and tools backed by CrawlFox scrape and search.
 
 ```bash
 pip install langchain-crawlfox crawlfox-py
@@ -15,3 +15,7 @@ print(docs[0].page_content)
 scrape = CrawlFoxScrape()
 search = CrawlFoxSearch()
 ```
+
+Set `CRAWLFOX_API_KEY`. Loader `mode="scrape"` fetches one URL as markdown.
+
+Docs: https://docs.crawlfox.io

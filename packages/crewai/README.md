@@ -1,6 +1,6 @@
 # crawlfox-crewai
 
-CrewAI tools for [CrawlFox](https://crawlfox.io) scrape and search.
+CrewAI tools that call CrawlFox scrape and search.
 
 ```bash
 pip install crawlfox-crewai crawlfox-py 'crewai[tools]'
@@ -14,4 +14,6 @@ search_tool = CrawlFoxSearchTool()
 # Pass tools=[scrape_tool, search_tool] to your CrewAI agent
 ```
 
-Requires `CRAWLFOX_API_KEY` or pass `api_key=` on each tool.
+Set `CRAWLFOX_API_KEY` or pass `api_key=` on each tool. Search uses Google or DuckDuckGo through the same public API as `crawlfox-py`.
+
+Docs: https://docs.crawlfox.io

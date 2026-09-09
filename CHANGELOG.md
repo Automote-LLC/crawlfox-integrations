@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Expand SDK READMEs from the live CrawlFox API (scrape formats, json selectors, search engines, batch, logs, credits, errors).
+- JavaScript package `crawlfox@0.1.2` ships that npm README.
+
 ## 0.1.1
 
 - JavaScript SDK published as unscoped `crawlfox` (`npm install crawlfox`).

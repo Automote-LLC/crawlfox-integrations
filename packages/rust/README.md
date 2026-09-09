@@ -1,13 +1,18 @@
 # crawlfox (Rust)
 
-Official Rust SDK for the [CrawlFox](https://crawlfox.io) scrape + search API.
+Official Rust SDK for the [CrawlFox](https://crawlfox.io) API.
+
+Scrape a URL, search Google or DuckDuckGo, batch up to 100 URLs, stream search, and read logs.
+
+Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY` or pass `api_key`.
 
 ```toml
 [dependencies]
 crawlfox = { git = "https://github.com/Automote-LLC/crawlfox-integrations", path = "packages/rust" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
-Path dependency while developing:
+While developing against a checkout:
 
 ```toml
 crawlfox = { path = "../crawlfox-integrations/packages/rust" }
@@ -34,53 +39,75 @@ async fn main() -> Result<(), crawlfox::Error> {
             },
         )
         .await?;
-    println!("{}", page.data.as_ref().and_then(|d| d.markdown.as_deref()).unwrap_or(""));
+    println!("{}", page.markdown.as_deref().unwrap_or(""));
 
     let results = client
         .search(
-            "crawlfox web scraping",
+            "rust async tutorial",
             SearchOptions {
                 engine: Some("google".into()),
-                num: Some(5),
+                num: Some(10),
                 ..Default::default()
             },
         )
         .await?;
-    if let Some(web) = results.data.and_then(|d| d.web) {
-        for hit in web {
-            println!("{} {}", hit.title.unwrap_or_default(), hit.url);
-        }
+    for hit in results.web.unwrap_or_default() {
+        println!("{} {}", hit.title.unwrap_or_default(), hit.url);
     }
 
     let batch = client
         .batch(
-            vec![
-                "https://example.org".into(),
-                "https://example.net".into(),
-            ],
+            vec!["https://example.com/".into(), "https://example.org/".into()],
             ScrapeOptions {
                 formats: Some(vec!["markdown".into()]),
                 ..Default::default()
             },
         )
         .await?;
-    for item in batch.results {
-        println!("{:?}", item.data.and_then(|d| d.markdown));
+    for doc in batch.data {
+        println!("{:?}", doc.markdown);
     }
     Ok(())
 }
 ```
 
-Add `tokio` with `macros` and `rt-multi-thread` to run the example.
+`scrape` returns a `Document` (fields on the struct). `search` returns `SearchData` with `web`. `batch` returns `BatchScrapeResult` with `data`.
+
+## Scrape
+
+Formats: `markdown`, `html`, `rawHtml`, `json`, `links`, `images`, `emails`. Default markdown.
+
+`json_options` is a JSON value of CSS selectors when you include `"json"`. There is no separate extract endpoint.
+
+Also: `skip_cache`, `timeout` (ms), `country`, `language`, `location`, `redact_pii`, `zdr`.
+
+```rust
+let page = client.scrape_get("https://example.com").await?;
+```
+
+## Search
+
+Engines: `google`, `duckduckgo`. `num` 1 to 100. `start` for offset. Credits: 1 per 10 requested results.
+
+`search_stream` returns NDJSON events (`page` / `done` / `error`).
+
+## Logs
+
+```rust
+let row = client.get_log(id).await?;
+let stored = client.get_log_result(id).await?;
+```
 
 ## Errors
 
 ```rust
 match client.scrape("https://example.com", Default::default()).await {
     Err(e) => println!("{:?} {:?}", e.status(), e.code()),
-    Ok(page) => println!("{:?}", page.data),
+    Ok(page) => println!("{:?}", page.markdown),
 }
 ```
+
+Retries on 502/503/504 and `retryable: true`.
 
 ## Docs
 
