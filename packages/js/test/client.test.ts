@@ -6,7 +6,9 @@ describe("CrawlFox client", () => {
   it("requires an API key", () => {
     const prev = process.env.CRAWLFOX_API_KEY;
     delete process.env.CRAWLFOX_API_KEY;
-    assert.throws(() => new CrawlFox(), /API key required/);
+    assert.throws(() => new CrawlFox(), (err: unknown) => {
+      return err instanceof CrawlFoxError && err.status === 401;
+    });
     process.env.CRAWLFOX_API_KEY = prev;
   });
 
@@ -171,5 +173,24 @@ describe("CrawlFox client", () => {
     const row = await client.getLog("abc");
     assert.match(url, /\/v1\/logs\/abc$/);
     assert.equal(row.status, 200);
+  });
+
+  it("defaults scrape formats to markdown and rejects empty urls", async () => {
+    let body: Record<string, unknown> = {};
+    const fetchMock = async (_url: string | URL | Request, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ success: true, data: { markdown: "# x" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = new CrawlFox({ apiKey: "cfx_test", fetch: fetchMock });
+    await client.scrape("https://example.com");
+    assert.deepEqual(body.formats, ["markdown"]);
+    await assert.rejects(() => client.scrape("  "), (err: unknown) => {
+      return err instanceof CrawlFoxError && err.status === 400;
+    });
+    await assert.rejects(() => client.batch([]), /non-empty/);
+    await assert.rejects(() => client.search(""), /q is required/);
   });
 });

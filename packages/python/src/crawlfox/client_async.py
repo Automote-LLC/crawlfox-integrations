@@ -14,7 +14,11 @@ from crawlfox._transport import (
     document_from_envelope,
     is_retryable_error,
     raise_or_json,
+    require_batch_urls,
+    require_query,
+    require_url,
     resolve_api_key,
+    resolve_api_url,
     scrape_body,
     scrape_get_path,
     search_body,
@@ -41,13 +45,13 @@ class AsyncCrawlFox:
         self,
         api_key: Optional[str] = None,
         *,
-        api_url: str = DEFAULT_API_URL,
+        api_url: Optional[str] = None,
         timeout: float = 120.0,
         max_retries: int = 2,
         client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         self.api_key = resolve_api_key(api_key)
-        self.api_url = api_url.rstrip("/")
+        self.api_url = resolve_api_url(api_url)
         self.timeout = timeout
         self.max_retries = max_retries
         self._client = client
@@ -85,7 +89,7 @@ class AsyncCrawlFox:
         extract_main_content: Optional[bool] = None,
     ) -> Document:
         body = scrape_body(
-            url,
+            require_url(url),
             formats=formats,
             skip_cache=skip_cache,
             zdr=zdr,
@@ -100,7 +104,7 @@ class AsyncCrawlFox:
         return document_from_envelope(await self._post("/v1/scrape", body))
 
     async def scrape_get(self, url: str) -> Document:
-        return document_from_envelope(await self._get(scrape_get_path(url)))
+        return document_from_envelope(await self._get(scrape_get_path(require_url(url))))
 
     async def batch(
         self,
@@ -117,7 +121,7 @@ class AsyncCrawlFox:
         extract_main_content: Optional[bool] = None,
     ) -> BatchScrapeResult:
         body = batch_body(
-            urls,
+            require_batch_urls(urls),
             formats=formats,
             skip_cache=skip_cache,
             zdr=zdr,
@@ -141,7 +145,7 @@ class AsyncCrawlFox:
         language: Optional[str] = None,
     ) -> SearchData:
         body = search_body(
-            query,
+            require_query(query),
             engine=engine,
             num=num,
             start=start,
@@ -161,27 +165,32 @@ class AsyncCrawlFox:
         language: Optional[str] = None,
     ) -> AsyncIterator[SearchStreamEvent]:
         body = search_body(
-            query,
+            require_query(query),
             engine=engine,
             num=num,
             start=start,
             country=country,
             language=language,
         )
-        res = await self._http().post(
+        req = self._http().build_request(
+            "POST",
             f"{self.api_url}/v1/search/stream",
             json=body,
             headers=default_headers(self.api_key),
         )
-        if not res.is_success:
-            raise_or_json(res)
-        async for line in res.aiter_lines():
-            if not line:
-                continue
-            raw = json.loads(line)
-            yield SearchStreamEvent.model_validate(
-                normalize_keys(raw) if isinstance(raw, dict) else raw
-            )
+        res = await self._http().send(req, stream=True)
+        try:
+            if not res.is_success:
+                raise_or_json(res)
+            async for line in res.aiter_lines():
+                if not line:
+                    continue
+                raw = json.loads(line)
+                yield SearchStreamEvent.model_validate(
+                    normalize_keys(raw) if isinstance(raw, dict) else raw
+                )
+        finally:
+            await res.aclose()
 
     async def get_log(self, log_id: str) -> LogRow:
         return LogRow.model_validate(await self._get(f"/v1/logs/{log_id}"))
@@ -199,6 +208,11 @@ class AsyncCrawlFox:
                 last = err
                 if i >= attempts - 1 or not is_retryable_error(err):
                     raise
+                await asyncio.sleep(0.2 * (2 ** i))
+            except httpx.RequestError as err:
+                last = CrawlFoxError(str(err), 0, retryable=True)
+                if i >= attempts - 1:
+                    raise last
                 await asyncio.sleep(0.2 * (2 ** i))
         assert last is not None
         raise last

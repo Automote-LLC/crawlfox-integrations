@@ -35,6 +35,8 @@ impl Client {
             .ok_or(Error::MissingApiKey)?;
         let api_url = options
             .api_url
+            .or_else(|| std::env::var("CRAWLFOX_API_URL").ok())
+            .filter(|u| !u.is_empty())
             .unwrap_or_else(|| DEFAULT_API_URL.to_string())
             .trim_end_matches('/')
             .to_string();
@@ -48,16 +50,20 @@ impl Client {
         })
     }
 
-    pub async fn scrape(&self, url: impl Into<String>, options: ScrapeOptions) -> Result<Document, Error> {
+    pub async fn scrape(&self, url: impl Into<String>, mut options: ScrapeOptions) -> Result<Document, Error> {
+        let url = require_url(url.into())?;
+        if options.formats.is_none() {
+            options.formats = Some(vec!["markdown".into()]);
+        }
         let mut body = serde_json::to_value(&options)?;
-        body["url"] = json!(url.into());
+        body["url"] = json!(url);
         let env: ScrapeEnvelope = self.request("POST", "/v1/scrape", Some(body)).await?;
         Ok(env.into_document())
     }
 
     pub async fn scrape_get(&self, url: impl AsRef<str>) -> Result<Document, Error> {
+        let url = require_url(url.as_ref().to_string())?;
         let encoded: String = url
-            .as_ref()
             .bytes()
             .map(|b| match b {
                 b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
@@ -77,7 +83,11 @@ impl Client {
         urls: Vec<String>,
         mut options: ScrapeOptions,
     ) -> Result<BatchScrapeResult, Error> {
+        require_batch(&urls)?;
         options.json_options = None;
+        if options.formats.is_none() {
+            options.formats = Some(vec!["markdown".into()]);
+        }
         let mut body = serde_json::to_value(&options)?;
         body["urls"] = json!(urls);
         let env: BatchEnvelope = self.request("POST", "/v1/batch", Some(body)).await?;
@@ -85,8 +95,9 @@ impl Client {
     }
 
     pub async fn search(&self, q: impl Into<String>, options: SearchOptions) -> Result<SearchData, Error> {
+        let q = require_query(q.into())?;
         let mut body = serde_json::to_value(&options)?;
-        body["q"] = json!(q.into());
+        body["q"] = json!(q);
         let env: SearchEnvelope = self.request("POST", "/v1/search", Some(body)).await?;
         Ok(env.into_data())
     }
@@ -96,8 +107,9 @@ impl Client {
         q: impl Into<String>,
         options: SearchOptions,
     ) -> Result<Vec<SearchStreamEvent>, Error> {
+        let q = require_query(q.into())?;
         let mut body = serde_json::to_value(&options)?;
-        body["q"] = json!(q.into());
+        body["q"] = json!(q);
         let res = self.send("POST", "/v1/search/stream", Some(body)).await?;
         let status = res.status();
         let text = res.text().await?;
@@ -135,7 +147,17 @@ impl Client {
         let attempts = self.max_retries + 1;
         let mut last: Option<Error> = None;
         for i in 0..attempts {
-            let res = self.send(method, path, body.clone()).await?;
+            let res = match self.send(method, path, body.clone()).await {
+                Ok(res) => res,
+                Err(err) => {
+                    if i + 1 < attempts && err.should_retry() {
+                        last = Some(err);
+                        tokio::time::sleep(Duration::from_millis(200 * (1 << i))).await;
+                        continue;
+                    }
+                    return Err(err);
+                }
+            };
             let status = res.status();
             let bytes = res.bytes().await?;
             if !status.is_success() {
@@ -143,7 +165,7 @@ impl Client {
                 let err = Error::from_status(status.as_u16(), parsed);
                 if i + 1 < attempts && err.should_retry() {
                     last = Some(err);
-                    std::thread::sleep(Duration::from_millis(200 * (1 << i)));
+                    tokio::time::sleep(Duration::from_millis(200 * (1 << i))).await;
                     continue;
                 }
                 return Err(err);
@@ -181,4 +203,45 @@ impl Client {
         };
         Ok(builder.headers(headers).send().await?)
     }
+}
+
+fn invalid(message: &str) -> Error {
+    Error::from_status(
+        400,
+        ErrorBody {
+            code: Some("INVALID_REQUEST".into()),
+            retryable: Some(false),
+            message: Some(message.into()),
+            ..Default::default()
+        },
+    )
+}
+
+fn require_url(url: String) -> Result<String, Error> {
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return Err(invalid("url is required"));
+    }
+    Ok(trimmed.to_string())
+}
+
+fn require_query(q: String) -> Result<String, Error> {
+    let trimmed = q.trim();
+    if trimmed.is_empty() {
+        return Err(invalid("q is required"));
+    }
+    Ok(trimmed.to_string())
+}
+
+fn require_batch(urls: &[String]) -> Result<(), Error> {
+    if urls.is_empty() {
+        return Err(invalid("urls must be a non-empty array"));
+    }
+    if urls.len() > 100 {
+        return Err(invalid("batch supports at most 100 URLs"));
+    }
+    for u in urls {
+        require_url(u.clone())?;
+    }
+    Ok(())
 }

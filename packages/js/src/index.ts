@@ -18,11 +18,51 @@ const DEFAULT_API_URL = "https://api.crawlfox.io";
 function resolveApiKey(explicit?: string): string {
   const key = explicit ?? process.env.CRAWLFOX_API_KEY;
   if (!key) {
-    throw new Error(
+    throw new CrawlFoxError(
       "CrawlFox API key required. Pass apiKey or set CRAWLFOX_API_KEY.",
+      401,
+      { code: "UNAUTHORIZED", retryable: false },
     );
   }
   return key;
+}
+
+function requireUrl(url: string): string {
+  const trimmed = url?.trim() ?? "";
+  if (!trimmed) {
+    throw new CrawlFoxError("url is required", 400, {
+      code: "INVALID_REQUEST",
+      retryable: false,
+    });
+  }
+  return trimmed;
+}
+
+function requireQuery(q: string): string {
+  const trimmed = q?.trim() ?? "";
+  if (!trimmed) {
+    throw new CrawlFoxError("q is required", 400, {
+      code: "INVALID_REQUEST",
+      retryable: false,
+    });
+  }
+  return trimmed;
+}
+
+function requireBatchUrls(urls: string[]): string[] {
+  if (!urls?.length) {
+    throw new CrawlFoxError("urls must be a non-empty array", 400, {
+      code: "INVALID_REQUEST",
+      retryable: false,
+    });
+  }
+  if (urls.length > 100) {
+    throw new CrawlFoxError("batch supports at most 100 URLs", 400, {
+      code: "INVALID_REQUEST",
+      retryable: false,
+    });
+  }
+  return urls.map(requireUrl);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -73,14 +113,13 @@ function searchFromEnvelope(envelope: Record<string, unknown>): SearchData {
 }
 
 function scrapeBody(url: string, options: ScrapeOptions): Record<string, unknown> {
-  const body: Record<string, unknown> = { url };
-  Object.assign(body, options);
-  return body;
+  const { formats, ...rest } = options;
+  return { url, formats: formats ?? ["markdown"], ...rest };
 }
 
 function batchBody(urls: string[], options: Omit<ScrapeOptions, "jsonOptions">): Record<string, unknown> {
-  const { jsonOptions: _, ...rest } = options as ScrapeOptions;
-  return { urls, ...rest };
+  const { jsonOptions: _, formats, ...rest } = options as ScrapeOptions;
+  return { urls, formats: formats ?? ["markdown"], ...rest };
 }
 
 /**
@@ -101,12 +140,18 @@ export class CrawlFox {
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
   private readonly fetchFn: typeof fetch;
+  private readonly retryBackoffMs: number;
 
   constructor(options: CrawlFoxClientOptions = {}) {
     this.apiKey = resolveApiKey(options.apiKey);
-    this.apiUrl = (options.apiUrl ?? DEFAULT_API_URL).replace(/\/$/, "");
+    this.apiUrl = (
+      options.apiUrl ??
+      process.env.CRAWLFOX_API_URL ??
+      DEFAULT_API_URL
+    ).replace(/\/$/, "");
     this.timeoutMs = options.timeoutMs ?? 120_000;
     this.maxRetries = options.maxRetries ?? 2;
+    this.retryBackoffMs = options.retryBackoffMs ?? 200;
     this.fetchFn = options.fetch ?? fetch;
   }
 
@@ -114,7 +159,7 @@ export class CrawlFox {
   async scrape(url: string, options: ScrapeOptions = {}): Promise<Document> {
     const envelope = await this.post<Record<string, unknown>>(
       "/v1/scrape",
-      scrapeBody(url, options),
+      scrapeBody(requireUrl(url), options),
     );
     return documentFromEnvelope(envelope);
   }
@@ -123,7 +168,7 @@ export class CrawlFox {
   async scrapeGet(url: string): Promise<Document> {
     const envelope = await this.request<Record<string, unknown>>(
       "GET",
-      `/v1/scrape/${encodeURIComponent(url)}`,
+      `/v1/scrape/${encodeURIComponent(requireUrl(url))}`,
     );
     return documentFromEnvelope(envelope);
   }
@@ -137,7 +182,7 @@ export class CrawlFox {
       success?: boolean;
       count?: number;
       results?: Record<string, unknown>[];
-    }>("/v1/batch", batchBody(urls, options));
+    }>("/v1/batch", batchBody(requireBatchUrls(urls), options));
     const data = (envelope.results ?? []).map(documentFromEnvelope);
     return {
       success: envelope.success ?? true,
@@ -149,7 +194,7 @@ export class CrawlFox {
   /** Search the web (Google or DuckDuckGo). */
   async search(q: string, options: SearchOptions = {}): Promise<SearchData> {
     const envelope = await this.post<Record<string, unknown>>("/v1/search", {
-      q,
+      q: requireQuery(q),
       ...options,
     });
     return searchFromEnvelope(envelope);
@@ -160,7 +205,10 @@ export class CrawlFox {
     q: string,
     options: SearchOptions = {},
   ): AsyncGenerator<SearchStreamEvent> {
-    const res = await this.send("POST", "/v1/search/stream", { q, ...options });
+    const res = await this.send("POST", "/v1/search/stream", {
+      q: requireQuery(q),
+      ...options,
+    });
     if (!res.ok) {
       throw await parseError(res);
     }
@@ -214,7 +262,7 @@ export class CrawlFox {
           const err = await parseError(res);
           if (i < attempts - 1 && isRetryable(err)) {
             last = err;
-            await sleep(200 * 2 ** i);
+            await sleep(this.retryBackoffMs * 2 ** i);
             continue;
           }
           throw err;
@@ -222,9 +270,24 @@ export class CrawlFox {
         return (await res.json()) as T;
       } catch (err) {
         if (err instanceof CrawlFoxError) {
+          if (i < attempts - 1 && isRetryable(err)) {
+            last = err;
+            await sleep(this.retryBackoffMs * 2 ** i);
+            continue;
+          }
           throw err;
         }
-        throw err;
+        const wrapped = new CrawlFoxError(
+          err instanceof Error ? err.message : "network error",
+          0,
+          { retryable: true },
+        );
+        if (i < attempts - 1) {
+          last = wrapped;
+          await sleep(this.retryBackoffMs * 2 ** i);
+          continue;
+        }
+        throw wrapped;
       }
     }
     throw last ?? new CrawlFoxError("Request failed", 0);

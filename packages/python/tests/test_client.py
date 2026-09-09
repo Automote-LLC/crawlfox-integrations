@@ -11,7 +11,7 @@ from crawlfox import AsyncCrawlFox, CrawlFox, CrawlFoxError, Document, SearchDat
 
 def test_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("CRAWLFOX_API_KEY", raising=False)
-    with pytest.raises(ValueError, match="API key required"):
+    with pytest.raises(CrawlFoxError, match="API key required"):
         CrawlFox()
 
 
@@ -209,3 +209,13 @@ async def test_async_scrape() -> None:
         app = AsyncCrawlFox(api_key="cfx_test", client=http)
         doc = await app.scrape("https://example.com", formats=["markdown"])
         assert doc.markdown == "# Async"
+
+
+def test_validates_inputs() -> None:
+    cf = CrawlFox(api_key="cfx_test", client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"success": True, "data": {}}))))
+    with pytest.raises(CrawlFoxError, match="url is required"):
+        cf.scrape(" ")
+    with pytest.raises(CrawlFoxError, match="non-empty"):
+        cf.batch([])
+    with pytest.raises(CrawlFoxError, match="q is required"):
+        cf.search("")

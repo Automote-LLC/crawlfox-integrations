@@ -152,6 +152,8 @@ export interface CrawlFoxClientOptions {
   maxRetries?: number;
   /** Custom fetch implementation (for tests or edge runtimes). */
   fetch?: typeof fetch;
+  /** Base delay for exponential backoff, in ms. Defaults to 200. */
+  retryBackoffMs?: number;
 }
 
 export class CrawlFoxError extends Error {
@@ -169,3 +171,5 @@ export class CrawlFoxError extends Error {
     this.body = body;
   }
 }
+
+export const MAX_BATCH_URLS = 100;

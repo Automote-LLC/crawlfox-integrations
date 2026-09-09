@@ -11,7 +11,11 @@ from crawlfox._transport import (
     default_headers,
     document_from_envelope,
     raise_or_json,
+    require_batch_urls,
+    require_query,
+    require_url,
     resolve_api_key,
+    resolve_api_url,
     scrape_body,
     scrape_get_path,
     search_body,
@@ -38,13 +42,13 @@ class CrawlFox:
         self,
         api_key: Optional[str] = None,
         *,
-        api_url: str = DEFAULT_API_URL,
+        api_url: Optional[str] = None,
         timeout: float = 120.0,
         max_retries: int = 2,
         client: Optional[httpx.Client] = None,
     ) -> None:
         self.api_key = resolve_api_key(api_key)
-        self.api_url = api_url.rstrip("/")
+        self.api_url = resolve_api_url(api_url)
         self.timeout = timeout
         self.max_retries = max_retries
         self._client = client
@@ -82,7 +86,7 @@ class CrawlFox:
         extract_main_content: Optional[bool] = None,
     ) -> Document:
         body = scrape_body(
-            url,
+            require_url(url),
             formats=formats,
             skip_cache=skip_cache,
             zdr=zdr,
@@ -97,7 +101,7 @@ class CrawlFox:
         return document_from_envelope(self._post("/v1/scrape", body))
 
     def scrape_get(self, url: str) -> Document:
-        return document_from_envelope(self._get(scrape_get_path(url)))
+        return document_from_envelope(self._get(scrape_get_path(require_url(url))))
 
     def batch(
         self,
@@ -114,7 +118,7 @@ class CrawlFox:
         extract_main_content: Optional[bool] = None,
     ) -> BatchScrapeResult:
         body = batch_body(
-            urls,
+            require_batch_urls(urls),
             formats=formats,
             skip_cache=skip_cache,
             zdr=zdr,
@@ -138,7 +142,7 @@ class CrawlFox:
         language: Optional[str] = None,
     ) -> SearchData:
         body = search_body(
-            query,
+            require_query(query),
             engine=engine,
             num=num,
             start=start,
@@ -160,7 +164,7 @@ class CrawlFox:
         import json
 
         body = search_body(
-            query,
+            require_query(query),
             engine=engine,
             num=num,
             start=start,
@@ -169,23 +173,28 @@ class CrawlFox:
         )
 
         def send() -> httpx.Response:
-            res = self._http().post(
+            req = self._http().build_request(
+                "POST",
                 f"{self.api_url}/v1/search/stream",
                 json=body,
                 headers=default_headers(self.api_key),
             )
+            res = self._http().send(req, stream=True)
             if not res.is_success:
                 raise_or_json(res)
             return res
 
         res = with_retries(send, max_retries=self.max_retries)
-        for line in res.iter_lines():
-            if not line:
-                continue
-            raw = json.loads(line)
-            yield SearchStreamEvent.model_validate(
-                normalize_keys(raw) if isinstance(raw, dict) else raw
-            )
+        try:
+            for line in res.iter_lines():
+                if not line:
+                    continue
+                raw = json.loads(line)
+                yield SearchStreamEvent.model_validate(
+                    normalize_keys(raw) if isinstance(raw, dict) else raw
+                )
+        finally:
+            res.close()
 
     def get_log(self, log_id: str) -> LogRow:
         return LogRow.model_validate(self._get(f"/v1/logs/{log_id}"))

@@ -22,17 +22,61 @@ from crawlfox.types import (
 )
 
 DEFAULT_API_URL = "https://api.crawlfox.io"
+MAX_BATCH_URLS = 100
 
 
 def resolve_api_key(api_key: Optional[str]) -> str:
     import os
 
+    from crawlfox.types import CrawlFoxError
+
     key = api_key or os.environ.get("CRAWLFOX_API_KEY")
     if not key:
-        raise ValueError(
-            "CrawlFox API key required. Pass api_key or set CRAWLFOX_API_KEY."
+        raise CrawlFoxError(
+            "CrawlFox API key required. Pass api_key or set CRAWLFOX_API_KEY.",
+            401,
+            code="UNAUTHORIZED",
+            retryable=False,
         )
     return key
+
+
+def resolve_api_url(api_url: Optional[str] = None) -> str:
+    import os
+
+    return (api_url or os.environ.get("CRAWLFOX_API_URL") or DEFAULT_API_URL).rstrip("/")
+
+
+def require_url(url: str) -> str:
+    from crawlfox.types import CrawlFoxError
+
+    trimmed = (url or "").strip()
+    if not trimmed:
+        raise CrawlFoxError("url is required", 400, code="INVALID_REQUEST", retryable=False)
+    return trimmed
+
+
+def require_query(query: str) -> str:
+    from crawlfox.types import CrawlFoxError
+
+    trimmed = (query or "").strip()
+    if not trimmed:
+        raise CrawlFoxError("q is required", 400, code="INVALID_REQUEST", retryable=False)
+    return trimmed
+
+
+def require_batch_urls(urls: List[str]) -> List[str]:
+    from crawlfox.types import CrawlFoxError
+
+    if not urls:
+        raise CrawlFoxError(
+            "urls must be a non-empty array", 400, code="INVALID_REQUEST", retryable=False
+        )
+    if len(urls) > MAX_BATCH_URLS:
+        raise CrawlFoxError(
+            "batch supports at most 100 URLs", 400, code="INVALID_REQUEST", retryable=False
+        )
+    return [require_url(u) for u in urls]
 
 
 def default_headers(api_key: str) -> Dict[str, str]:
@@ -79,8 +123,7 @@ def scrape_body(
     _ = extract_main_content
     body: Dict[str, Any] = {"url": url}
     wf = wire_formats(formats)
-    if wf is not None:
-        body["formats"] = wf
+    body["formats"] = wf if wf is not None else ["markdown"]
     if skip_cache is not None:
         body["skipCache"] = skip_cache
     if zdr is not None:
@@ -248,6 +291,8 @@ def iter_ndjson_lines(text: str) -> Iterator[SearchStreamEvent]:
 def with_retries(send, *, max_retries: int):
     from crawlfox.types import CrawlFoxError
 
+    import httpx
+
     last: Optional[CrawlFoxError] = None
     attempts = max_retries + 1
     for i in range(attempts):
@@ -257,6 +302,11 @@ def with_retries(send, *, max_retries: int):
             last = err
             if i >= attempts - 1 or not is_retryable_error(err):
                 raise
+            time.sleep(0.2 * (2 ** i))
+        except httpx.RequestError as err:
+            last = CrawlFoxError(str(err), 0, retryable=True)
+            if i >= attempts - 1:
+                raise last
             time.sleep(0.2 * (2 ** i))
     assert last is not None
     raise last
