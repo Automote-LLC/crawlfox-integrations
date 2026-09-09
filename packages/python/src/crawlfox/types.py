@@ -46,7 +46,7 @@ class DocumentMetadata(BaseModel):
 
 
 class Document(BaseModel):
-    """A scraped document — Firecrawl-style return from ``scrape`` / batch items."""
+    """A scraped document returned from ``scrape`` / batch items."""
 
     model_config = ConfigDict(extra="allow", protected_namespaces=())
 

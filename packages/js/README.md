@@ -2,12 +2,12 @@
 
 Official JavaScript / TypeScript SDK for the [CrawlFox](https://crawlfox.io) scrape and search API.
 
-There is no crawl or sitemap endpoint on CrawlFox today. This client covers what the gateway actually ships: scrape, batch scrape, search, and request logs.
+Scrape pages to markdown, search the web, batch URLs, and look up your request logs.
 
 ## Install
 
 ```bash
-npm install crawlfox
+npm install @crawlfox.io/crawlfox
 ```
 
 Node 18+. Set `CRAWLFOX_API_KEY` or pass `apiKey`. Optional `CRAWLFOX_API_URL` (default `https://api.crawlfox.io`).
@@ -15,12 +15,12 @@ Node 18+. Set `CRAWLFOX_API_KEY` or pass `apiKey`. Optional `CRAWLFOX_API_URL` (
 ## Quickstart
 
 ```ts
-import { CrawlFox, CrawlFoxError } from "crawlfox";
+import { CrawlFox, CrawlFoxError } from "@crawlfox.io/crawlfox";
 
 const app = new CrawlFox(); // or { apiKey: "cfx_..." }
 
 const page = await app.scrape("https://example.com");
-console.log(page.markdown); // Document fields sit on the object (Firecrawl-style)
+console.log(page.markdown);
 
 const hits = await app.search("crawlfox", { engine: "google", num: 5 });
 console.log(hits.web?.[0]?.url);
@@ -45,7 +45,7 @@ await app.scrape("https://example.com", {
 
 ## Errors
 
-Failed requests throw `CrawlFoxError` (`status`, `code`, `retryable`). Quota `429` is **not** retried. `502`/`503`/`504` and `{ retryable: true }` are retried with exponential backoff.
+Failed requests throw `CrawlFoxError` (`status`, `code`, `retryable`). Transient `502`/`503`/`504` and `{ retryable: true }` are retried with exponential backoff.
 
 ```ts
 try {

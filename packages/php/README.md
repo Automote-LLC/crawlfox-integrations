@@ -1,10 +1,10 @@
 # crawlfox (PHP)
 
+Official PHP SDK for the [CrawlFox](https://crawlfox.io) scrape and search API.
+
 ```bash
 composer require crawlfox/crawlfox
 ```
-
-Not published yet — use a path/git dependency until then.
 
 ```php
 use Crawlfox\Client;

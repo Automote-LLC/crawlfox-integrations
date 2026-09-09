@@ -1,10 +1,10 @@
 # Crawlfox (.NET)
 
+Official .NET SDK for the [CrawlFox](https://crawlfox.io) scrape and search API.
+
 ```xml
 <PackageReference Include="Crawlfox" Version="0.1.0" />
 ```
-
-Not published yet.
 
 ```csharp
 using Crawlfox;

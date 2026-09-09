@@ -36,7 +36,7 @@ from crawlfox.types import (
 
 
 class CrawlFox:
-    """Official CrawlFox sync client (Firecrawl-style return shapes)."""
+    """Official CrawlFox sync client."""
 
     def __init__(
         self,

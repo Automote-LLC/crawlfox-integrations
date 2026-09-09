@@ -1,10 +1,10 @@
 # crawlfox (Elixir)
 
+Official Elixir SDK for the [CrawlFox](https://crawlfox.io) scrape and search API.
+
 ```elixir
 {:crawlfox, "~> 0.1.0"}
 ```
-
-Not published yet.
 
 ```elixir
 client = Crawlfox.new()

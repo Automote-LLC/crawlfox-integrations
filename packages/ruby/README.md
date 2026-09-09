@@ -1,10 +1,10 @@
 # crawlfox (Ruby)
 
+Official Ruby SDK for the [CrawlFox](https://crawlfox.io) scrape and search API.
+
 ```bash
 gem install crawlfox
 ```
-
-Not published yet.
 
 ```ruby
 require "crawlfox"

@@ -1,6 +1,9 @@
 {
-  "name": "crawlfox",
-  "version": "0.1.0",
+  "name": "@crawlfox.io/crawlfox",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.1.1",
   "description": "Official JavaScript SDK for the CrawlFox web scraping and search API",
   "license": "MIT",
   "author": "Automote LLC",

@@ -6,7 +6,7 @@ Official CrawlFox SDKs and framework integrations for the public API (`https://a
 
 | Package | Install | Description |
 |---------|---------|-------------|
-| **crawlfox** | `npm install crawlfox` | JavaScript / TypeScript SDK |
+| **@crawlfox.io/crawlfox** | `npm install @crawlfox.io/crawlfox` | JavaScript / TypeScript SDK |
 | **crawlfox-py** | `pip install crawlfox-py` | Python SDK |
 | **crawlfox (Go)** | `go get github.com/Automote-LLC/crawlfox-integrations/packages/go` | Go SDK |
 | **crawlfox (Rust)** | path/git crate `crawlfox` | Rust SDK |
@@ -26,9 +26,10 @@ Official CrawlFox SDKs and framework integrations for the public API (`https://a
 
 - `POST /v1/scrape` — scrape one URL
 - `POST /v1/batch` — scrape up to 100 URLs
-- `POST /v1/search` — web search (Google, Bing, DuckDuckGo)
+- `POST /v1/search` — web search
+- `GET /v1/logs/:id` — request logs
 
-There is **no** `/v1/crawl` or `/v1/map` endpoint today. SDKs match scrape, batch, search, and logs only.
+SDKs cover scrape, batch, search, streaming search, and logs.
 
 ## Auth
 
@@ -69,6 +70,6 @@ cd packages/ruby && ruby -Ilib:test test/client_test.rb
 cd packages/elixir && mix deps.get && mix test
 ```
 
-Set `CRAWLFOX_API_KEY` (and optionally `CRAWLFOX_API_URL`) to also run live scrape/search/batch tests against production. Without the key, live tests are skipped.
+Set `CRAWLFOX_API_KEY` (and optionally `CRAWLFOX_API_URL`) to run live scrape/search/batch tests against production.
 
 GitHub Actions CI runs all nine language SDKs. Add repo secrets `CRAWLFOX_API_KEY` and optional `CRAWLFOX_API_URL` to enable live tests in CI.

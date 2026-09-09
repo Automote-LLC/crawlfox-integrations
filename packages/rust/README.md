@@ -2,14 +2,12 @@
 
 Official Rust SDK for the [CrawlFox](https://crawlfox.io) scrape + search API.
 
-Not published to crates.io yet. From this monorepo:
-
 ```toml
 [dependencies]
 crawlfox = { git = "https://github.com/Automote-LLC/crawlfox-integrations", path = "packages/rust" }
 ```
 
-Or a path dependency while developing:
+Path dependency while developing:
 
 ```toml
 crawlfox = { path = "../crawlfox-integrations/packages/rust" }

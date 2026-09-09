@@ -14,4 +14,4 @@ search_tool = CrawlFoxSearchTool()
 # Pass tools=[scrape_tool, search_tool] to your CrewAI agent
 ```
 
-Requires `CRAWLFOX_API_KEY` or `api_key=` on each tool.
+Requires `CRAWLFOX_API_KEY` or pass `api_key=` on each tool.

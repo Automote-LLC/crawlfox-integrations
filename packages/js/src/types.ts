@@ -1,4 +1,4 @@
-export const SDK_VERSION = "0.1.0";
+export const SDK_VERSION = "0.1.1";
 
 /** Output formats the gateway accepts. `text` was removed (400 FORMAT_UNAVAILABLE). */
 export type ScrapeFormat =
@@ -78,7 +78,7 @@ export interface ScrapeMetadata {
   [key: string]: unknown;
 }
 
-/** Firecrawl-style document: fields sit on the object, not under `.data`. */
+/** Scraped document: fields sit on the object, not under `.data`. */
 export interface Document {
   success?: boolean;
   markdown?: string;

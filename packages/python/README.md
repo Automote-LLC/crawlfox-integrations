@@ -16,7 +16,7 @@ from crawlfox import CrawlFox
 app = CrawlFox(api_key="cfx_YOUR_API_KEY")
 # or: export CRAWLFOX_API_KEY=cfx_...
 
-# Scrape → Document (Firecrawl-style)
+# Scrape → Document
 doc = app.scrape("https://example.com", formats=["markdown", "links"])
 print(doc.markdown)
 print(doc.metadata.source_url, doc.metadata.status_code)
@@ -50,7 +50,7 @@ asyncio.run(main())
 
 ## Return shapes
 
-Typed models (Pydantic) with **snake_case** fields — same idea as Firecrawl:
+Typed models (Pydantic) with **snake_case** fields:
 
 | Method | Returns | Access |
 |--------|---------|--------|
