@@ -231,4 +231,3 @@ MIT. See `LICENSE` in the repo.
 
 - API: https://docs.crawlfox.io
 - Dashboard: https://crawlfox.io
-- MCP (Claude, Cursor): `https://mcp.crawlfox.io/mcp`
