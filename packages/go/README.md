@@ -7,7 +7,7 @@ Scrape a URL, search Google, Bing, or DuckDuckGo, batch scrape URLs, stream sear
 Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY` or pass `APIKey`.
 
 ```bash
-go get github.com/Automote-LLC/crawlfox-integrations/packages/go@main
+go get github.com/Automote-LLC/crawlfox-integrations/packages/go@v0.1.0
 ```
 
 ## Quickstart

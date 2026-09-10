@@ -8,7 +8,7 @@ Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY` or p
 
 ```toml
 [dependencies]
-crawlfox = { git = "https://github.com/Automote-LLC/crawlfox-integrations", path = "packages/rust" }
+crawlfox = "0.1.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
