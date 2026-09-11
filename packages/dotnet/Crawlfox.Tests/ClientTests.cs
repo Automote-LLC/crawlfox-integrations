@@ -9,16 +9,8 @@ public class ClientTests
     [Fact]
     public void RequiresApiKey()
     {
-        var prev = Environment.GetEnvironmentVariable("CRAWLFOX_API_KEY");
-        Environment.SetEnvironmentVariable("CRAWLFOX_API_KEY", null);
-        try
-        {
-            Assert.Throws<ArgumentException>(() => new Client());
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("CRAWLFOX_API_KEY", prev);
-        }
+        Assert.Throws<ArgumentException>(() => new Client(""));
+        Assert.Throws<ArgumentException>(() => new Client("   "));
     }
 
     [Fact]

@@ -167,13 +167,29 @@ defmodule Crawlfox do
         {char_url, header_list}
       end
 
-    case :httpc.request(http_method, request, [timeout: 120_000], []) do
+    http_opts = [timeout: 120_000, ssl: ssl_opts(url)]
+
+    case :httpc.request(http_method, request, http_opts, []) do
       {:ok, {{_, status, _}, _headers, resp_body}} ->
         {status, resp_body}
 
       {:error, reason} ->
         raise Error, message: "request failed: #{inspect(reason)}", status: 0, retryable: true
     end
+  end
+
+  defp ssl_opts(url) do
+    host =
+      case URI.parse(url) do
+        %URI{host: host} when is_binary(host) -> String.to_charlist(host)
+        _ -> ~c""
+      end
+
+    [
+      verify: :verify_peer,
+      cacerts: :public_key.cacerts_get(),
+      server_name_indication: host
+    ]
   end
 
   defp decode_body(body) when is_list(body), do: decode_body(List.to_string(body))

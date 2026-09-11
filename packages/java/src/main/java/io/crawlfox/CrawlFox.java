@@ -29,6 +29,10 @@ public final class CrawlFox {
     private final long retryBackoffMs;
     private final HttpClient http;
 
+    public CrawlFox() {
+        this(null, null, Duration.ofSeconds(120), 2, 200, null);
+    }
+
     public CrawlFox(String apiKey) {
         this(apiKey, null, Duration.ofSeconds(120), 2, 200, null);
     }
@@ -44,9 +48,12 @@ public final class CrawlFox {
             int maxRetries,
             long retryBackoffMs,
             HttpClient http) {
-        String key = apiKey != null && !apiKey.isBlank()
-                ? apiKey
-                : System.getenv("CRAWLFOX_API_KEY");
+        String key;
+        if (apiKey != null) {
+            key = apiKey;
+        } else {
+            key = System.getenv("CRAWLFOX_API_KEY");
+        }
         if (key == null || key.isBlank()) {
             throw new IllegalArgumentException(
                     "CrawlFox API key required. Pass apiKey or set CRAWLFOX_API_KEY.");

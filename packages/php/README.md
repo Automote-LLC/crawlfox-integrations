@@ -8,6 +8,22 @@ Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY`.
 composer require crawlfox/crawlfox
 ```
 
+Until Packagist lists the package, add a VCS repository (composer.json at the GitHub repo root):
+
+```json
+{
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/Automote-LLC/crawlfox-integrations"
+    }
+  ],
+  "require": {
+    "crawlfox/crawlfox": "dev-main"
+  }
+}
+```
+
 ```php
 use Crawlfox\Client;
 

@@ -7,8 +7,17 @@
     <Version>0.1.0</Version>
     <Description>Official .NET SDK for the CrawlFox scrape and search API</Description>
     <Authors>Automote LLC</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://crawlfox.io</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Automote-LLC/crawlfox-integrations</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>crawlfox;scrape;search;serp</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Remove="Crawlfox.Tests/**" />
     <None Remove="Crawlfox.Tests/**" />

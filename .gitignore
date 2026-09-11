@@ -28,3 +28,6 @@ packages/elixir/deps/
 *.user
 *.DotSettings.user
 *.exe
+*.gem
+*.nupkg
+packages/elixir/doc/

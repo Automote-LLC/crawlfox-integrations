@@ -4,7 +4,13 @@ Official Java 17+ SDK for the [CrawlFox](https://crawlfox.io) API: scrape, searc
 
 Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY`.
 
-Maven: `io.crawlfox:crawlfox:0.1.0`
+Maven Central coordinates once published: `io.crawlfox:crawlfox:0.1.0`
+
+Until then, install from this repo:
+
+```bash
+cd packages/java && mvn install
+```
 
 ```java
 import io.crawlfox.CrawlFox;

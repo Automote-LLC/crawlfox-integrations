@@ -11,7 +11,7 @@ Get a key from the [dashboard](https://crawlfox.io). Every request uses `Authori
 | **crawlfox** | `npm install crawlfox` | JavaScript / TypeScript SDK |
 | **crawlfox-py** | `pip install crawlfox-py` | Python SDK (sync and async) |
 | **crawlfox (Go)** | `go get github.com/Automote-LLC/crawlfox-integrations/packages/go@v0.1.0` | Go SDK |
-| **crawlfox (Rust)** | git/path crate `crawlfox` | Rust SDK |
+| **crawlfox (Rust)** | `crawlfox = "0.1.0"` (crates.io) | Rust SDK |
 | **crawlfox (PHP)** | `composer require crawlfox/crawlfox` | PHP SDK |
 | **crawlfox (Java)** | `io.crawlfox:crawlfox` | Java 17+ SDK |
 | **crawlfox (.NET)** | `Crawlfox` NuGet | .NET SDK |

@@ -7,6 +7,24 @@
   <version>0.1.0</version>
   <name>crawlfox</name>
   <description>Official Java SDK for the CrawlFox scrape and search API</description>
+  <url>https://crawlfox.io</url>
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Automote LLC</name>
+      <email>pratik@automote.io</email>
+      <organization>Automote LLC</organization>
+    </developer>
+  </developers>
+  <scm>
+    <url>https://github.com/Automote-LLC/crawlfox-integrations</url>
+    <connection>scm:git:https://github.com/Automote-LLC/crawlfox-integrations.git</connection>
+  </scm>
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

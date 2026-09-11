@@ -8,6 +8,12 @@ Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY`.
 gem install crawlfox
 ```
 
+Until RubyGems lists it:
+
+```ruby
+gem "crawlfox", github: "Automote-LLC/crawlfox-integrations", glob: "packages/ruby/*.gemspec"
+```
+
 ```ruby
 require "crawlfox"
 

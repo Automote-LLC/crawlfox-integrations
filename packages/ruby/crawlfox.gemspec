@@ -8,7 +8,12 @@ Gem::Specification.new do |s|
   s.email = ["pratik@automote.io"]
   s.homepage = "https://crawlfox.io"
   s.license = "MIT"
-  s.files = ["lib/crawlfox.rb"]
+  s.files = ["lib/crawlfox.rb", "README.md", "LICENSE"]
   s.require_paths = ["lib"]
   s.required_ruby_version = ">= 3.1"
+  s.metadata = {
+    "homepage_uri" => "https://crawlfox.io",
+    "source_code_uri" => "https://github.com/Automote-LLC/crawlfox-integrations",
+    "documentation_uri" => "https://docs.crawlfox.io"
+  }
 end

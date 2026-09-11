@@ -4,8 +4,18 @@ Official Elixir SDK for the [CrawlFox](https://crawlfox.io) API: scrape, search 
 
 Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY`.
 
+Hex once published:
+
 ```elixir
 {:crawlfox, "~> 0.1.0"}
+```
+
+Until Hex lists it:
+
+```elixir
+{:crawlfox,
+ git: "https://github.com/Automote-LLC/crawlfox-integrations.git",
+ sparse: "packages/elixir"}
 ```
 
 ```elixir

@@ -8,6 +8,8 @@ Get a key from the [dashboard](https://crawlfox.io). Set `CRAWLFOX_API_KEY`.
 <PackageReference Include="Crawlfox" Version="0.1.0" />
 ```
 
+Until nuget.org lists it, add a project reference to `packages/dotnet/Crawlfox.csproj`.
+
 ```csharp
 using Crawlfox;
 
